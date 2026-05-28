@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "TeamsConnection": "<your-teams-connector-runtime-url>",
+    "TEAMS_TOKEN": "<your-token-or-use-managed-identity>"
+  }
+}

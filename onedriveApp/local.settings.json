@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "OneDriveConnection": "<your-onedrive-connector-runtime-url>",
+    "ONEDRIVE_TOKEN": "<your-token-or-use-managed-identity>"
+  }
+}
