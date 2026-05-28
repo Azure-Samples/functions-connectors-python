@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: kustoAppPython
+metadata:
+    template: functions-connectors-python@1.0.0
+services:
+    api:
+        project: .
+        language: python
+        host: function
+hooks:
+    prepackage:
+        windows:
+            shell: pwsh
+            run: pip install -r requirements.txt --target .python_packages/lib/site-packages
+        posix:
+            shell: sh
+            run: pip install -r requirements.txt --target .python_packages/lib/site-packages

@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureBlobConnection": "<your-azureblob-connector-runtime-url>",
+    "AZUREBLOB_TOKEN": "<your-token-or-use-managed-identity>",
+    "Office365Connection": "<your-office365-connector-runtime-url>",
+    "OFFICE365_TOKEN": "<your-token-or-use-managed-identity>",
+    "SharepointConnection": "<your-sharepoint-connector-runtime-url>",
+    "SHAREPOINT_TOKEN": "<your-token-or-use-managed-identity>",
+    "TeamsConnection": "<your-teams-connector-runtime-url>",
+    "TEAMS_TOKEN": "<your-token-or-use-managed-identity>"
+  }
+}
