@@ -8,11 +8,17 @@
         "location": {
             "value": "${AZURE_LOCATION}"
         },
-        "connectorRuntimeUrl": {
-            "value": "${CONNECTOR_RUNTIME_URL=}"
+        "connectorNamespaceLocation": {
+            "value": "${CONNECTOR_NAMESPACE_LOCATION=brazilsouth}"
         },
-        "connectorToken": {
-            "value": "${CONNECTOR_TOKEN=}"
+        "userPrincipalId": {
+            "value": "${AZURE_PRINCIPAL_ID}"
+        },
+        "assignStorageRoles": {
+            "value": false
+        },
+        "useStorageManagedIdentity": {
+            "value": false
         }
     }
 }

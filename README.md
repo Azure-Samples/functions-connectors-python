@@ -159,7 +159,7 @@ azd up
 `azd up` provisions a resource group containing:
 
 - Azure Storage account (Function App backing store).
-- Linux Consumption Function App (Python 3.13) with system-assigned managed identity.
+- Flex Consumption Function App (Python 3.13) with system-assigned managed identity.
 - Application Insights + Log Analytics workspace.
 
 It then runs the `prepackage` hook (`pip install -r requirements.txt`) and deploys the Python code.
