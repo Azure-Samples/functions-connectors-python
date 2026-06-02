@@ -36,7 +36,7 @@ Update `local.settings.json` with the runtime URL and token for each connection 
 
 ## Deploy to Azure
 
-`azd up` will provision a Linux Consumption Function App (Python 3.13), a Storage account, Application Insights,
+`azd up` will provision a Flex Consumption Function App (Python 3.13), a Storage account, Application Insights,
 and Log Analytics, then deploy the Python code.
 
 ```bash

@@ -7,6 +7,8 @@ services:
         project: .
         language: python
         host: function
+        config:
+            remoteBuild: false
 hooks:
     prepackage:
         windows:
@@ -15,3 +17,10 @@ hooks:
         posix:
             shell: sh
             run: pip install -r requirements.txt --target .python_packages/lib/site-packages
+    postdeploy:
+        windows:
+            shell: pwsh
+            run: ./infra/scripts/postdeploy.ps1
+        posix:
+            shell: sh
+            run: ./infra/scripts/postdeploy.sh

@@ -1,2 +1,2 @@
 # Azure Functions dependencies
-azure-functions>=2.2.0b4
+azure-functions==2.2.0b5

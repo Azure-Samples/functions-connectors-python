@@ -7,6 +7,8 @@ services:
         project: .
         language: python
         host: function
+        config:
+            remoteBuild: false
 hooks:
     prepackage:
         windows:
