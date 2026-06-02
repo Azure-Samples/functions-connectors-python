@@ -3,6 +3,7 @@
 
 // ----------------------------------------------------------------------------
 // Resource-group-scoped resources: Storage, App Insights, Function App.
+// Uses the Flex Consumption (FC1) hosting plan.
 // ----------------------------------------------------------------------------
 
 @minLength(1)
@@ -18,12 +19,24 @@ param connectorRuntimeUrl string = ''
 @secure()
 param connectorToken string = ''
 
+@description('Maximum scale-out instance count for the Flex Consumption plan.')
+param maximumInstanceCount int = 100
+
+@description('Per-instance memory size (MB) for the Flex Consumption plan.')
+@allowed([
+  512
+  2048
+  4096
+])
+param instanceMemoryMB int = 2048
+
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var storageAccountName = take('st${replace(resourceToken, '-', '')}', 24)
 var planName = 'plan-${environmentName}-${resourceToken}'
 var functionAppName = 'func-${environmentName}-${resourceToken}'
 var appInsightsName = 'appi-${environmentName}-${resourceToken}'
 var logAnalyticsName = 'log-${environmentName}-${resourceToken}'
+var deploymentContainerName = 'app-package'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -38,6 +51,16 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     supportsHttpsTrafficOnly: true
   }
   tags: tags
+}
+
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobServices
+  name: deploymentContainerName
 }
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -63,13 +86,13 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   tags: tags
 }
 
-resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+resource appPlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: planName
   location: location
-  kind: 'linux'
+  kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: 'FC1'
+    tier: 'FlexConsumption'
   }
   properties: {
     reserved: true
@@ -77,7 +100,7 @@ resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   tags: tags
 }
 
-resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
+resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
@@ -87,34 +110,32 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   properties: {
     serverFarmId: appPlan.id
     httpsOnly: true
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainerName}'
+          authentication: {
+            type: 'SystemAssignedIdentity'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: maximumInstanceCount
+        instanceMemoryMB: instanceMemoryMB
+      }
+      runtime: {
+        name: 'python'
+        version: '3.13'
+      }
+    }
     siteConfig: {
-      linuxFxVersion: 'Node|20'
       ftpsState: 'FtpsOnly'
       minTlsVersion: '1.2'
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'node'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~20'
+          name: 'AzureWebJobsStorage__accountName'
+          value: storage.name
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -134,6 +155,34 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   tags: union(tags, {
     'azd-service-name': 'api'
   })
+  dependsOn: [
+    deploymentContainer
+  ]
+}
+
+// Grant the function app's managed identity access to the storage account
+// (required for Flex Consumption deployment package and AzureWebJobsStorage identity-based auth).
+var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+
+resource storageBlobDataOwner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, functionApp.id, storageBlobDataOwnerRoleId)
+  properties: {
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataOwnerRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource storageBlobDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, functionApp.id, storageBlobDataContributorRoleId)
+  properties: {
+    principalId: functionApp.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    principalType: 'ServicePrincipal'
+  }
 }
 
 output functionAppName string = functionApp.name
