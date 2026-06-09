@@ -1,22 +1,78 @@
-# office365AppPython
+# Office 365 Outlook Triggers (Python)
 
-Azure Functions sample app demonstrating the **Office 365** connector triggers using Python with rich SDK types.
+Azure Functions sample app demonstrating **Office 365 Outlook** connector triggers using the
+`azurefunctions-extensions-connectors` package with the Functions connector trigger extension.
+
+| Function | Connector operation | Description |
+| --- | --- | --- |
+| `OnNewEmail` | [`OnNewEmailV3`](https://learn.microsoft.com/en-us/connectors/office365/#when-a-new-email-arrives-(v3)) | Fires when a new email arrives |
+| `OnFlaggedEmail` | [`OnFlaggedEmailV4`](https://learn.microsoft.com/en-us/connectors/office365/#when-an-email-is-flagged-(v4)) | Fires when an email is flagged |
+| `OnNewMentionMeEmail` | [`OnNewMentionMeEmailV3`](https://learn.microsoft.com/en-us/connectors/office365/#when-a-new-email-mentioning-me-arrives-(v3)) | Fires when a new email mentions the authenticated user |
+| `OnNewCalendarEvent` | [`CalendarGetOnNewItemsV3`](https://learn.microsoft.com/en-us/connectors/office365/#when-a-new-event-is-created-(v3)) | Fires when a new calendar event is created |
+| `OnUpcomingEvent` | [`OnUpcomingEventsV3`](https://learn.microsoft.com/en-us/connectors/office365/#when-an-upcoming-event-is-starting-soon-(v3)) | Fires when an upcoming calendar event is starting soon |
+
+> [!CAUTION]
+> **Personal data.** This sample writes email/calendar content to Blob Storage for demonstration only. Restrict access to the resources to appropriate users only, and run `azd down --purge` when done.
 
 ## Prerequisites
 
-- **Python 3.13** or later
-- **azure-functions>=2.2.0b4** (included in requirements.txt)
-- **azurefunctions-extensions-connectors** (included in requirements.txt)
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
+- [Python 3.13](https://www.python.org/downloads/)
+- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
-## Triggers included
+  ```bash
+  # Bash
+  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
+  ```
 
-| Function | Type | Description |
-|---|---|---|
-| `OnNewEmail` | `ClientReceiveMessage` | New email arrives |
-| `OnFlaggedEmail` | `GraphClientReceiveMessage` | Email is flagged |
-| `OnNewMentionMeEmail` | `GraphClientReceiveMessage` | Email mentions current user |
-| `OnNewCalendarEvent` | `GraphCalendarEventClientReceive` | New calendar event created |
-| `OnUpcomingEvent` | `GraphCalendarEventClientReceive` | Upcoming event notification |
+  or
+
+  ```pwsh
+  # PowerShell
+  irm https://aka.ms/connector-namespace-cli-install-ps | iex
+  ```
+
+## Deploy to Azure
+
+```bash
+cd office365App
+azd auth login
+az login
+azd up
+```
+
+### Resources provisioned
+
+| Resource | Purpose |
+| --- | --- |
+| **Resource Group** | Contains all resources |
+| **Flex Consumption Function App** (Python 3.13) | Hosts the 5 connector trigger functions |
+| **App Service Plan** (FC1) | Flex Consumption plan |
+| **User-Assigned Managed Identity** | Identity for the function app |
+| **Storage Account** | Deployment artifacts, function runtime state, and trigger payload output |
+| **Log Analytics Workspace** | Backing store for Application Insights |
+| **Application Insights** | Telemetry and logging |
+| **Connector Namespace** | Hosts the Office 365 connection and trigger configs |
+| **Office 365 Outlook Connection** (OAuth) | Authenticates to Office 365 — requires interactive consent during post-deploy |
+
+After provisioning, a post-deploy hook authorizes the Office 365 connection and creates trigger configs. To re-run:
+
+```bash
+azd hooks run postdeploy
+```
+
+### Trigger configuration
+
+The post-deploy script configures the `OnNewEmail` trigger with these defaults:
+
+| Setting | Value |
+| ------- | ----- |
+| `operationName` | `OnNewEmailV3` |
+| `folderPath` | `Inbox` |
+| `importance` | `High` |
+
+Edit `infra/scripts/postdeploy.ps1` (or `.sh`) to change folder, importance, or add trigger configs for the other functions.
 
 ## Rich SDK Types
 
@@ -33,82 +89,21 @@ def on_new_email(emails: List[office365.ClientReceiveMessage]) -> None:
         print(f"From: {email.from_}")
 ```
 
-## Run locally
+## Verify
 
-```bash
-pip install -r requirements.txt
-func start
-```
-
-Update `local.settings.json` with your connector runtime URL and access token before starting.
-
-## Deploy to Azure
-
-`azd up` will provision a Flex Consumption Function App (Python 3.13), a Storage account, Application Insights,
-Log Analytics, and a **Connector Namespace** with an Office 365 Outlook connection. After deployment, an
-`azd` postdeploy hook (`infra/scripts/postdeploy.ps1` / `.sh`) uses the
-[`connector-namespace`](https://github.com/Azure/Connectors) Azure CLI extension to:
-
-1. Create one Connector Namespace **trigger config** per Functions trigger
-   in this app, each pointing at the function's connector webhook URL.
-2. Walk you through **OAuth consent** for the Office 365 connection by
-   opening the consent link in your browser and polling until the
-   connection flips to `Connected`.
-
-```bash
-azd auth login
-azd up
-```
-
-The Bash script requires `jq`. The PowerShell script requires PowerShell 7+ (`pwsh`).
-
-> Connector Namespace currently requires the `brazilsouth` region (the only
-> region with the required preview features as of writing). Override via
-> `azd env set CONNECTOR_NAMESPACE_LOCATION <region>` if needed.
-
-To re-run only the post-deployment configuration without redeploying code:
-
-```bash
-azd hooks run postdeploy
-```
-
-The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
-This is already configured in `host.json`.
-
-## Verify the Connector Namespace, connection, and triggers
-
-After `azd up` finishes, open the **Connector Namespaces** portal to verify
-the resource was provisioned and that all five triggers are wired to a
-`Connected` Office 365 connection:
-
-[Connectors — Connector Namespaces](https://connectors.azure.com/)
-
-You should see:
+After `azd up`, open the [Connector Namespaces portal](https://connectors.azure.com/) to verify:
 
 - One **Connection** (Office 365 Outlook) with status **Connected**
-- Five **Triggers** (one per function), each in **Enabled** state and bound
-  to the connection above
+- Trigger configs in **Enabled** state
 
-![Connector Namespace overview showing connection and triggers](./docs/connector-namespace-overview-office365.png)
+Send yourself a high-importance email to fire the trigger. Tail logs with:
 
-If a trigger is not listed or the connection shows as `Unauthenticated`,
-re-run `azd hooks run postdeploy` and complete the consent flow when prompted.
-
-## Project layout
-
+```bash
+az functionapp log tail -g <resourceGroupName> -n <functionAppName>
 ```
-office365AppPython/
-├── function_app.py           # Python v2 programming model with rich types
-├── requirements.txt          # Python dependencies (includes connectors SDK)
-├── infra/
-│   ├── main.bicep            # azd entrypoint (subscription scope)
-│   ├── resources.bicep       # Storage + App Insights + Function App + Connector Namespace
-│   ├── connectorNamespace.bicep  # Connector Namespace + Office 365 connection
-│   ├── main.parameters.json
-│   └── scripts/
-│       ├── postdeploy.ps1    # Trigger config + OAuth consent (Windows/pwsh)
-│       └── postdeploy.sh     # Trigger config + OAuth consent (POSIX)
-├── azure.yaml
-├── host.json
-└── local.settings.json
-```
+
+## More
+
+- [Operations to Functions Signature Mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md)
+- [Office 365 Outlook connector reference](https://learn.microsoft.com/en-us/connectors/office365/)
+- [Built-in auth sample](https://github.com/Azure-Samples/functions-connectors-net-builtinauth) — secretless authentication using managed identity + Easy Auth.

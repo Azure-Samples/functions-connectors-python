@@ -6,7 +6,6 @@ if (-not (az extension show --name connector-namespace --query name -o tsv 2>$nu
     exit 1
 }
 
-# Outputs from azd
 $outputs = azd env get-values --output json | ConvertFrom-Json
 
 $resourceGroupName = $outputs.resourceGroupName
@@ -14,28 +13,46 @@ $connectorNamespaceName = $outputs.connectorNamespaceName
 $connectorNamespaceConnectionName = $outputs.connectorNamespaceConnectionName
 $functionAppName = $outputs.functionAppName
 $subscriptionId = $outputs.AZURE_SUBSCRIPTION_ID
+$sharepointSiteUrl = $outputs.sharepointSiteUrl
+$sharepointLibraryName = $outputs.sharepointLibraryName
 
-# Fetch the connector extension system key
+if (-not $resourceGroupName -or -not $connectorNamespaceName -or -not $connectorNamespaceConnectionName -or -not $functionAppName -or -not $sharepointSiteUrl -or -not $sharepointLibraryName) {
+    Write-Host "ERROR: required azd outputs missing. Run 'azd provision' first." -ForegroundColor Red
+    exit 1
+}
+
 Write-Host "Fetching connector extension key for $functionAppName..." -ForegroundColor Cyan
 $connectorExtensionKey = az functionapp keys list -g $resourceGroupName -n $functionAppName --query "systemKeys.connector_extension" -o tsv
+if (-not $connectorExtensionKey) {
+    Write-Host "ERROR: could not fetch connector_extension system key from $functionAppName." -ForegroundColor Red
+    exit 1
+}
 
-# --- Helper: create a trigger config on the Connector Namespace ---
-function New-TriggerConfig {
-    param(
-        [Parameter(Mandatory)] [string] $FunctionName,
-        [Parameter(Mandatory)] [string] $OperationName,
-        [Parameter(Mandatory)] [string] $Description,
-        [object[]] $Parameters = @()
-    )
+Write-Host "Creating Connector Namespace trigger configs..." -ForegroundColor Yellow
+Write-Host "  SharePoint site: $sharepointSiteUrl" -ForegroundColor Cyan
+Write-Host "  Library: $sharepointLibraryName" -ForegroundColor Cyan
 
-    $triggerName = "$connectorNamespaceConnectionName-$($FunctionName.ToLower())"
-    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$FunctionName&code=$connectorExtensionKey"
-    $connectionDetails = "{connectionName:$connectorNamespaceConnectionName,connectorName:office365}"
-    $parametersShorthand = "[" + (($Parameters | ForEach-Object { "{name:$($_.name),value:'$($_.value)'}" }) -join ",") + "]"
+$triggerConfigs = @(
+    @{
+        FunctionName = 'OnSharepointNewFile'
+        OperationName = 'GetOnNewFileItems'
+        Description = 'When a file is created (properties only)'
+    },
+    @{
+        FunctionName = 'OnSharepointUpdatedFile'
+        OperationName = 'GetOnUpdatedFileItems'
+        Description = 'When a file is created or modified (properties only)'
+    }
+)
+
+foreach ($trigger in $triggerConfigs) {
+    $functionName = $trigger.FunctionName
+    $triggerName = "$connectorNamespaceConnectionName-$($functionName.ToLower())"
+    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$functionName&code=$connectorExtensionKey"
     $notifFile = Join-Path $PSScriptRoot ".notification-details-$([System.Guid]::NewGuid().ToString('N')).json"
     @{ callbackUrl = $callbackUrl } | ConvertTo-Json -Compress | Set-Content -Path $notifFile -NoNewline
 
-    Write-Host "  Creating trigger: $FunctionName -> $OperationName" -ForegroundColor Cyan
+    Write-Host "  Creating trigger: $($trigger.FunctionName) -> $($trigger.OperationName)" -ForegroundColor Cyan
 
     try {
         az connector-namespace trigger delete `
@@ -45,16 +62,16 @@ function New-TriggerConfig {
         az connector-namespace trigger create `
             -g $resourceGroupName --namespace $connectorNamespaceName `
             -n $triggerName `
-            --connection-details $connectionDetails `
-            --operation-name $OperationName `
-            --parameters $parametersShorthand `
+            --connection-details "{connectionName:$connectorNamespaceConnectionName,connectorName:sharepointonline}" `
+            --operation-name $trigger.OperationName `
+            --parameters "[{name:dataset,value:'$sharepointSiteUrl'},{name:table,value:'$sharepointLibraryName'}]" `
             --notification-details "@$notifFile" `
-            --description $Description `
-            --metadata "{destinationType:functionApp,functionAppName:$functionAppName,functionAppResourceGroup:$resourceGroupName,functionAppSubscriptionId:$subscriptionId,functionName:$FunctionName,recurrenceFrequency:Minute,recurrenceInterval:'5'}" `
-            -o none | Out-Null
+            --description $trigger.Description `
+            --metadata "{destinationType:functionApp,functionAppName:$functionAppName,functionAppResourceGroup:$resourceGroupName,functionAppSubscriptionId:$subscriptionId,functionName:$functionName,recurrenceFrequency:Minute,recurrenceInterval:'5'}" `
+            -o none
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  Failed to create trigger config for $FunctionName." -ForegroundColor Red
+            Write-Host "  Failed to create trigger config for $($trigger.FunctionName)." -ForegroundColor Red
             exit 1
         }
     }
@@ -63,64 +80,19 @@ function New-TriggerConfig {
     }
 }
 
-# --- Create trigger configs for all 5 functions ---
-Write-Host "Creating Connector Namespace trigger configs..." -ForegroundColor Yellow
-
-New-TriggerConfig `
-    -FunctionName "OnNewEmail" `
-    -OperationName "OnNewEmailV3" `
-    -Description "When a new email arrives" `
-    -Parameters @(
-        @{ name = "folderPath"; value = "Inbox" }
-        @{ name = "importance"; value = "High" }
-    )
-
-New-TriggerConfig `
-    -FunctionName "OnFlaggedEmail" `
-    -OperationName "OnFlaggedEmailV4" `
-    -Description "When an email is flagged" `
-    -Parameters @(
-        @{ name = "folderPath"; value = "Inbox" }
-    )
-
-New-TriggerConfig `
-    -FunctionName "OnNewMentionMeEmail" `
-    -OperationName "OnNewMentionMeEmailV3" `
-    -Description "When a new email mentioning me arrives" `
-    -Parameters @(
-        @{ name = "folderPath"; value = "Inbox" }
-    )
-
-New-TriggerConfig `
-    -FunctionName "OnNewCalendarEvent" `
-    -OperationName "CalendarGetOnNewItemsV3" `
-    -Description "When a new calendar event is created" `
-    -Parameters @(
-        @{ name = "table"; value = "Calendar" }
-    )
-
-New-TriggerConfig `
-    -FunctionName "OnUpcomingEvent" `
-    -OperationName "OnUpcomingEventsV3" `
-    -Description "When an upcoming event is starting soon" `
-    -Parameters @(
-        @{ name = "table"; value = "Calendar" }
-    )
-
 Write-Host "All trigger configs created." -ForegroundColor Green
-
 Write-Host ""
-Write-Host "Authorizing office365 connection..." -ForegroundColor Yellow
+Write-Host "Authorizing sharepointonline connection..." -ForegroundColor Yellow
 
 $currentStatus = az connector-namespace connection show `
     -g $resourceGroupName --namespace $connectorNamespaceName `
     -n $connectorNamespaceConnectionName `
-    --query "properties.overallStatus" -o tsv
+    --query "properties.overallStatus" -o tsv 2>$null
 
 if ($currentStatus -eq "Connected") {
     Write-Host "Connection is already authorized." -ForegroundColor Green
 } else {
-    Write-Host "-> A browser tab will open. Sign in with the mailbox account whose Inbox you want to monitor." -ForegroundColor Cyan
+    Write-Host "-> A browser tab will open. Sign in with the account that has access to the SharePoint site." -ForegroundColor Cyan
 
     $consentLink = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
@@ -130,7 +102,7 @@ if ($currentStatus -eq "Connected") {
             --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" `
             --query "value[0].link" -o tsv 2>$null
 
-        if (-not $consentLink -or $consentLink -eq "null") {
+        if (-not $consentLink) {
             $consentLink = az connector-namespace connection list-consent-links `
                 -g $resourceGroupName --namespace $connectorNamespaceName `
                 --connection-name $connectorNamespaceConnectionName `
@@ -138,17 +110,17 @@ if ($currentStatus -eq "Connected") {
                 --query "link" -o tsv 2>$null
         }
 
-        if ($consentLink -and $consentLink -ne "null") {
+        if ($consentLink) {
             break
         }
 
         if ($attempt -lt 5) {
-            Write-Host "listConsentLinks attempt $attempt failed. Retrying in 5 seconds..." -ForegroundColor Yellow
+            Write-Host "list-consent-links attempt $attempt failed. Retrying in 5 seconds..." -ForegroundColor Yellow
             Start-Sleep -Seconds 5
         }
     }
 
-    if (-not $consentLink -or $consentLink -eq "null") {
+    if (-not $consentLink) {
         Write-Host "Failed to create consent link." -ForegroundColor Red
         exit 1
     }
@@ -170,7 +142,7 @@ if ($currentStatus -eq "Connected") {
         $currentStatus = az connector-namespace connection show `
             -g $resourceGroupName --namespace $connectorNamespaceName `
             -n $connectorNamespaceConnectionName `
-            --query "properties.overallStatus" -o tsv
+            --query "properties.overallStatus" -o tsv 2>$null
 
         if ($currentStatus -ne $lastPrintedStatus) {
             Write-Host "Connection status: $currentStatus" -ForegroundColor Cyan
@@ -189,6 +161,6 @@ if ($currentStatus -eq "Connected") {
 }
 
 Write-Host ""
-Write-Host "Done. All 5 Office 365 triggers are configured." -ForegroundColor Green
+Write-Host "Done. Both SharePoint triggers are configured." -ForegroundColor Green
 Write-Host "Tail logs: az functionapp log tail -g $resourceGroupName -n $functionAppName" -ForegroundColor Green
 Write-Host ""

@@ -7,14 +7,24 @@ This repository contains Python samples that show how to use the new **Connector
 
 ## Prerequisites
 
-- **Python 3.13** or later
-- **azure-functions>=2.2.0b4**
-- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
-- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) for deployment
-- An Azure subscription
-- A configured connector connection for the connector you want to trigger on
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
+- [Python 3.13](https://www.python.org/downloads/)
+- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
-> The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`, version `[4.42.*, 5.0.0)`) — already pre-configured in every sample's `host.json`.
+  ```bash
+  # Bash
+  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
+  ```
+
+  or
+
+  ```pwsh
+  # PowerShell
+  irm https://aka.ms/connector-namespace-cli-install-ps | iex
+  ```
+
+- `jq` (for bash post-deploy scripts on macOS/Linux)
 
 ## What are Functions connectors?
 

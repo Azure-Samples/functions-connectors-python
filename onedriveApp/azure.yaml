@@ -1,17 +1,15 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
-name: onedriveAppPython
-metadata:
-    template: functions-connectors-python@1.0.0
+
+name: functions-connectors-python-onedrive
 services:
-    api:
-        project: .
-        language: python
-        host: function
+  function-app:
+    host: function
+    project: .
+    language: python
 hooks:
-    prepackage:
-        windows:
-            shell: pwsh
-            run: pip install -r requirements.txt --target .python_packages/lib/site-packages
-        posix:
-            shell: sh
-            run: pip install -r requirements.txt --target .python_packages/lib/site-packages
+  postdeploy:
+    shell: pwsh
+    run: ./infra/scripts/postdeploy.ps1
+    interactive: true
+    continueOnError: false
+

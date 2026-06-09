@@ -15,3 +15,8 @@ hooks:
         posix:
             shell: sh
             run: pip install -r requirements.txt --target .python_packages/lib/site-packages
+    postdeploy:
+        shell: pwsh
+        run: ./infra/scripts/postdeploy.ps1
+        interactive: true
+        continueOnError: false

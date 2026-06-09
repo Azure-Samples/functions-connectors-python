@@ -1,29 +1,55 @@
-# genericAppPython
+# Generic Connector Triggers (Python — untyped)
 
-Azure Functions sample demonstrating the **generic connector trigger API** using Python.
+Azure Functions sample demonstrating the **generic (untyped) connector trigger binding**
+with `string` payloads instead of strongly-typed SDK models.
 
 Use the generic API when you want to:
 
 - Bind a trigger for a connector that does **not** have a first-class wrapper yet.
-- Define your own item shape (custom or partial types).
+- Forward the payload as-is (e.g. to a queue, blob, or AI model) without deserializing.
+- Keep a minimal dependency footprint.
 - Work with any Azure Logic Apps connector.
 
-## Prerequisites
-
-- **Python 3.13** or later
-- **azure-functions>=2.2.0b4** (included in requirements.txt)
+> The function **name** still binds to the connector + operation on the host side. The
+> generic API only changes the parameter type — it does **not** change which
+> operation the function listens to.
 
 ## Triggers included
 
 | Function | Connector | Description |
 |---|---|---|
-| `OnGenericAzureBlobUpdated` | Azure Blob | Logs Name, Path, LastModified |
-| `OnGenericOffice365NewEmail` | Office 365 | Logs Subject, From |
-| `OnGenericSharepointNewFile` | SharePoint Online | Logs Name, Path |
-| `OnGenericTeamsChannelMessage` | Teams | Logs MessageId |
-| `OnGenericCustomConnectorEvent` | _any custom connector_ | Logs Id, Name |
+| `OnGenericOffice365NewEmail` | Office 365 | Fires on new email — raw JSON payload |
+| `OnGenericAzureBlobUpdated` | Azure Blob | Fires on blob add/modify — raw JSON payload |
+| `OnGenericSharepointNewFile` | SharePoint Online | Fires on new file — raw JSON payload |
+| `OnGenericTeamsChannelMessage` | Teams | Fires on channel message — raw JSON payload |
+| `OnGenericCustomConnectorEvent` | _any connector_ | Placeholder for custom connectors — raw JSON payload |
 
-Each handler receives the payload as a JSON string, which is parsed to extract `body.value[]` items.
+Each handler receives the raw JSON as a `string` via `@app.connector_trigger(arg_name="payload")`.
+
+## When to use this vs. the typed API
+
+| Use case | Approach |
+|---|---|
+| Connector with a generated SDK model (e.g. Office 365, Teams) | Use the typed payload class (see `office365App`, `teamsApp`) |
+| Connector without a first-class SDK wrapper | Use `connector_trigger` with string payload (this sample) |
+| Forward payload as-is to storage or downstream service | Use `connector_trigger` with string payload (this sample) |
+
+## Prerequisites
+
+- [Python 3.13](https://www.python.org/downloads/) or later
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
+- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors)
+
+  ```powershell
+  # PowerShell
+  irm https://aka.ms/connector-namespace-cli-install-ps | iex
+  ```
+
+  ```bash
+  # Bash
+  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
+  ```
 
 ## Run locally
 
@@ -34,33 +60,29 @@ func start
 
 Update `local.settings.json` with the runtime URL and token for each connection you want to trigger on.
 
-## Deploy to Azure
-
-`azd up` will provision a Flex Consumption Function App (Python 3.13), a Storage account, Application Insights,
-and Log Analytics, then deploy the Python code.
+## Deploy
 
 ```bash
 azd auth login
+cd genericApp
 azd up
-azd env set CONNECTOR_RUNTIME_URL '<your-connector-runtime-url>'
-azd env set CONNECTOR_TOKEN '<your-token>'
-azd provision
 ```
+
+This sample does **not** include infrastructure or post-deploy scripts because the
+connector and trigger configuration depends on which connector you want to use.
+Copy the `infra/` folder from one of the other apps (e.g. `office365App`) and adjust
+the connector name and trigger parameters to match your scenario.
 
 The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
 This is already configured in `host.json`.
 
 ## Project layout
 
-```
-genericAppPython/
-├── function_app.py           # Python v2 programming model (all triggers)
+```text
+genericApp/
+├── function_app.py           # All generic trigger functions (string payload)
 ├── requirements.txt          # Python dependencies
-├── infra/
-│   ├── main.bicep            # azd entrypoint (subscription scope)
-│   ├── resources.bicep       # Storage + App Insights + Function App
-│   └── main.parameters.json
-├── azure.yaml
 ├── host.json
+├── azure.yaml
 └── local.settings.json
 ```

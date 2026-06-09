@@ -15,6 +15,11 @@ NC='\033[0m'
 
 echo -e "${YELLOW}Post-deployment configuration...${NC}"
 
+if ! command -v jq &> /dev/null; then
+  echo -e "${RED}Error: jq is required for this script. Please install jq.${NC}"
+  exit 1
+fi
+
 if ! az extension show --name connector-namespace --query name -o tsv 2>/dev/null; then
   echo -e "${RED}ERROR: The 'connector-namespace' Azure CLI extension is required.${NC}"
   echo -e "${RED}Install: curl -fsSL https://aka.ms/connector-namespace-cli-install | sh${NC}"
@@ -23,30 +28,37 @@ fi
 
 outputs=$(azd env get-values --output json)
 
-if ! command -v jq &> /dev/null; then
-  echo -e "${RED}Error: jq is required for this script. Please install jq.${NC}"
-  exit 1
-fi
-
 resourceGroupName=$(echo "$outputs" | jq -r '.resourceGroupName')
 connectorNamespaceName=$(echo "$outputs" | jq -r '.connectorNamespaceName')
 connectorNamespaceConnectionName=$(echo "$outputs" | jq -r '.connectorNamespaceConnectionName')
 functionAppName=$(echo "$outputs" | jq -r '.functionAppName')
+sharepointSiteUrl=$(echo "$outputs" | jq -r '.sharepointSiteUrl')
+sharepointLibraryName=$(echo "$outputs" | jq -r '.sharepointLibraryName')
 
-# Fetch the connector extension system key
+if [[ -z "${resourceGroupName}" || -z "${connectorNamespaceName}" || -z "${connectorNamespaceConnectionName}" || -z "${functionAppName}" || -z "${sharepointSiteUrl}" || -z "${sharepointLibraryName}" || "${resourceGroupName}" == "null" || "${connectorNamespaceName}" == "null" || "${connectorNamespaceConnectionName}" == "null" || "${functionAppName}" == "null" || "${sharepointSiteUrl}" == "null" || "${sharepointLibraryName}" == "null" ]]; then
+  echo -e "${RED}ERROR: required azd outputs missing. Run 'azd provision' first.${NC}"
+  exit 1
+fi
+
 echo -e "${CYAN}Fetching connector extension key for ${functionAppName}...${NC}"
 connectorExtensionKey=$(az functionapp keys list -g "${resourceGroupName}" -n "${functionAppName}" --query "systemKeys.connector_extension" -o tsv)
+if [[ -z "${connectorExtensionKey}" ]]; then
+  echo -e "${RED}ERROR: could not fetch connector_extension system key from ${functionAppName}.${NC}"
+  exit 1
+fi
 
-# --- Helper: create a trigger config on the Connector Namespace ---
-create_trigger_config() {
-  local functionName="$1"
-  local operationName="$2"
-  local description="$3"
-  local parametersShorthand="$4"
+echo -e "${YELLOW}Creating Connector Namespace trigger configs...${NC}"
+echo -e "${CYAN}  SharePoint site: ${sharepointSiteUrl}${NC}"
+echo -e "${CYAN}  Library: ${sharepointLibraryName}${NC}"
 
-  local triggerName="${connectorNamespaceConnectionName}-$(echo "${functionName}" | tr '[:upper:]' '[:lower:]')"
-  local callbackUrl="https://${functionAppName}.azurewebsites.net/runtime/webhooks/connector?functionName=${functionName}&code=${connectorExtensionKey}"
-  local notifFile="${SCRIPT_DIR}/.notification-details.${RANDOM}.${RANDOM}.json"
+for triggerSpec in \
+  "OnSharepointNewFile|GetOnNewFileItems|When a file is created (properties only)" \
+  "OnSharepointUpdatedFile|GetOnUpdatedFileItems|When a file is created or modified (properties only)"
+do
+  IFS='|' read -r functionName operationName description <<< "${triggerSpec}"
+  triggerName="${connectorNamespaceConnectionName}-$(echo "${functionName}" | tr '[:upper:]' '[:lower:]')"
+  callbackUrl="https://${functionAppName}.azurewebsites.net/runtime/webhooks/connector?functionName=${functionName}&code=${connectorExtensionKey}"
+  notifFile="${SCRIPT_DIR}/.notification-details.${RANDOM}.${RANDOM}.json"
   _notif_files+=("$notifFile")
   printf '{"callbackUrl":"%s"}' "$callbackUrl" > "$notifFile"
 
@@ -59,55 +71,30 @@ create_trigger_config() {
   az connector-namespace trigger create \
     -g "${resourceGroupName}" --namespace "${connectorNamespaceName}" \
     -n "${triggerName}" \
-    --connection-details "{connectionName:${connectorNamespaceConnectionName},connectorName:office365}" \
+    --connection-details "{connectionName:${connectorNamespaceConnectionName},connectorName:sharepointonline}" \
     --operation-name "${operationName}" \
-    --parameters "${parametersShorthand}" \
+    --parameters "[{name:dataset,value:'${sharepointSiteUrl}'},{name:table,value:'${sharepointLibraryName}'}]" \
     --notification-details "@${notifFile}" \
     --description "${description}" \
     --metadata "{destinationType:functionApp,functionAppName:${functionAppName},functionAppResourceGroup:${resourceGroupName},functionAppSubscriptionId:${AZURE_SUBSCRIPTION_ID},functionName:${functionName},recurrenceFrequency:Minute,recurrenceInterval:'5'}" \
     -o none
 
   rm -f "$notifFile"
-}
-
-# --- Create trigger configs for all 5 functions ---
-echo -e "${YELLOW}Creating Connector Namespace trigger configs...${NC}"
-
-create_trigger_config "OnNewEmail" "OnNewEmailV3" \
-  "When a new email arrives" \
-  "[{name:folderPath,value:'Inbox'},{name:importance,value:'High'}]"
-
-create_trigger_config "OnFlaggedEmail" "OnFlaggedEmailV4" \
-  "When an email is flagged" \
-  "[{name:folderPath,value:'Inbox'}]"
-
-create_trigger_config "OnNewMentionMeEmail" "OnNewMentionMeEmailV3" \
-  "When a new email mentioning me arrives" \
-  "[{name:folderPath,value:'Inbox'}]"
-
-create_trigger_config "OnNewCalendarEvent" "CalendarGetOnNewItemsV3" \
-  "When a new calendar event is created" \
-  "[{name:table,value:'Calendar'}]"
-
-create_trigger_config "OnUpcomingEvent" "OnUpcomingEventsV3" \
-  "When an upcoming event is starting soon" \
-  "[{name:table,value:'Calendar'}]"
+done
 
 echo -e "${GREEN}All trigger configs created.${NC}"
-
 echo ""
-echo -e "${YELLOW}Authorizing office365 connection...${NC}"
+echo -e "${YELLOW}Authorizing sharepointonline connection...${NC}"
 
 currentStatus=$(az connector-namespace connection show \
   -g "${resourceGroupName}" --namespace "${connectorNamespaceName}" \
   -n "${connectorNamespaceConnectionName}" \
   --query "properties.overallStatus" -o tsv 2>/dev/null || true)
-currentStatus=${currentStatus:-Unknown}
 
 if [[ "${currentStatus}" == "Connected" ]]; then
   echo -e "${GREEN}Connection is already authorized.${NC}"
 else
-  echo -e "${CYAN}-> A browser tab will open. Sign in with the mailbox account whose Inbox you want to monitor.${NC}"
+  echo -e "${CYAN}-> A browser tab will open. Sign in with the account that has access to the SharePoint site.${NC}"
 
   consentLink=""
   for attempt in 1 2 3 4 5; do
@@ -130,7 +117,7 @@ else
     fi
 
     if [[ "${attempt}" != "5" ]]; then
-      echo -e "${YELLOW}listConsentLinks attempt ${attempt} failed. Retrying in 5 seconds...${NC}"
+      echo -e "${YELLOW}list-consent-links attempt ${attempt} failed. Retrying in 5 seconds...${NC}"
       sleep 5
     fi
   done
@@ -160,7 +147,6 @@ else
       -g "${resourceGroupName}" --namespace "${connectorNamespaceName}" \
       -n "${connectorNamespaceConnectionName}" \
       --query "properties.overallStatus" -o tsv 2>/dev/null || true)
-    currentStatus=${currentStatus:-Unknown}
 
     if [[ "${currentStatus}" != "${lastPrintedStatus}" ]]; then
       echo -e "${CYAN}Connection status: ${currentStatus}${NC}"
@@ -179,6 +165,6 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}Done. All 5 Office 365 triggers are configured.${NC}"
+echo -e "${GREEN}Done. Both SharePoint triggers are configured.${NC}"
 echo -e "${GREEN}   Tail logs:  az functionapp log tail -g ${resourceGroupName} -n ${functionAppName}${NC}"
 echo ""
