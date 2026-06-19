@@ -1,24 +1,16 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
-name: office365AppPython
+name: azure-functions-m365-email-python
 metadata:
-    template: functions-connectors-python@1.0.0
-services:
-    api:
-        project: .
-        language: python
-        host: function
+  template: azure-functions-m365-email-python@0.0.1-alpha
 hooks:
-    prepackage:
-        windows:
-            shell: pwsh
-            run: pip install -r requirements.txt --target .python_packages/lib/site-packages
-        posix:
-            shell: sh
-            run: pip install -r requirements.txt --target .python_packages/lib/site-packages
-    postdeploy:
-        windows:
-            shell: pwsh
-            run: ./infra/scripts/postdeploy.ps1
-        posix:
-            shell: sh
-            run: ./infra/scripts/postdeploy.sh
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

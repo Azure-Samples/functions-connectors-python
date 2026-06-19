@@ -1,52 +1,266 @@
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License.
-
-// ----------------------------------------------------------------------------
-// Subscription-scoped entrypoint used by `azd up`.
-// Creates the resource group and delegates to resources.bicep.
-// ----------------------------------------------------------------------------
-
 targetScope = 'subscription'
 
 @minLength(1)
 @maxLength(64)
-@description('Name of the azd environment. Used to derive resource names.')
+@description('Name of the the environment which is used to generate a short unique hash used in all resources.')
 param environmentName string
 
-@minLength(1)
-@description('Primary location for all resources.')
+@metadata({
+  azd: {
+    type: 'location'
+  }
+})
+@description('Location for all resources except the Connector Namespace.')
 param location string
 
-@description('Connector runtime URL (e.g. https://<connection-name>-<gateway>.azureconnectors.com). Optional at provisioning time; configure later as app setting.')
-param connectorRuntimeUrl string = ''
+@description('Region for the Connector Namespace. Override via CONNECTOR_NAMESPACE_LOCATION if needed.')
+param connectorNamespaceLocation string = 'westcentralus'
 
-@description('Connector OAuth access token. Optional at provisioning time; configure later as app setting or rotate via Key Vault.')
-@secure()
-param connectorToken string = ''
+metadata name = 'Azure Functions SharePoint Online Connector Trigger (Python)'
+metadata description = 'Connector Namespace trigger sample using system key authentication on the callback URL.'
 
-var tags = {
-  'azd-env-name': environmentName
-}
+@description('Id of the user identity to be used for testing and debugging. Granted access to the sharepointonline connection so the same code can be debugged locally with `az login`.')
+@metadata({
+  azd: {
+    type: 'principalId'
+  }
+})
+param userPrincipalId string = deployer().objectId
 
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: 'rg-${environmentName}'
+@description('SharePoint site URL to monitor (e.g., https://contoso.sharepoint.com/sites/mysite).')
+param sharepointSiteUrl string
+
+@description('SharePoint document library name to monitor (e.g., "Documents").')
+param sharepointLibraryName string = 'Documents'
+
+var abbrs = loadJsonContent('./abbreviations.json')
+var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var tags = { 'azd-env-name': environmentName }
+
+var functionAppName = '${abbrs.webSitesFunctions}${resourceToken}'
+var functionAppPlanName = '${abbrs.webServerFarms}${resourceToken}'
+var functionAppIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}${resourceToken}'
+var resourceGroupName = '${abbrs.resourcesResourceGroups}${environmentName}'
+var storageAccountName = '${abbrs.storageStorageAccounts}${resourceToken}'
+var logAnalyticsName = '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+var appInsightsName = '${abbrs.insightsComponents}${resourceToken}'
+var connectorNamespaceName = '${abbrs.connectorNamespaces}${resourceToken}'
+var connectorNamespaceConnectionName = '${abbrs.connectorNamespacesConnections}${resourceToken}'
+
+var deploymentStorageContainerName = 'app-package-${take(functionAppName, 32)}-${take(toLower(uniqueString(functionAppName, environmentName)), 7)}'
+var storageBlobDataOwner = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+var storageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
+
+resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' = {
+  name: resourceGroupName
   location: location
   tags: tags
 }
 
-module resources 'resources.bicep' = {
-  scope: resourceGroup
-  name: 'resources'
+module logAnalytics 'br/public:avm/res/operational-insights/workspace:0.15.0' = {
+  name: '${uniqueString(deployment().name, location)}-loganalytics'
+  scope: rg
   params: {
+    name: logAnalyticsName
     location: location
-    environmentName: environmentName
     tags: tags
-    connectorRuntimeUrl: connectorRuntimeUrl
-    connectorToken: connectorToken
+    dataRetention: 30
   }
 }
 
-output AZURE_LOCATION string = location
-output AZURE_RESOURCE_GROUP string = resourceGroup.name
-output FUNCTION_APP_NAME string = resources.outputs.functionAppName
-output FUNCTION_APP_HOSTNAME string = resources.outputs.functionAppHostname
+module funcUserAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.5.0' = {
+  name: 'funcUserAssignedIdentity'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    name: functionAppIdentityName
+  }
+}
+
+module monitoring 'br/public:avm/res/insights/component:0.7.1' = {
+  name: '${uniqueString(deployment().name, location)}-appinsights'
+  scope: rg
+  params: {
+    name: appInsightsName
+    location: location
+    tags: tags
+    workspaceResourceId: logAnalytics.outputs.resourceId
+    disableLocalAuth: true
+    roleAssignments: [
+      {
+        roleDefinitionIdOrName: monitoringMetricsPublisherRoleId
+        principalId: funcUserAssignedIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+      }
+      {
+        roleDefinitionIdOrName: monitoringMetricsPublisherRoleId
+        principalId: userPrincipalId
+        principalType: 'User'
+      }
+    ]
+  }
+}
+
+module storageAccount 'br/public:avm/res/storage/storage-account:0.32.0' = {
+  scope: rg
+  name: storageAccountName
+  params: {
+    name: storageAccountName
+    location: location
+    tags: tags
+    skuName: 'Standard_LRS'
+    kind: 'StorageV2'
+    allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
+    minimumTlsVersion: 'TLS1_2'
+    blobServices: {
+      containers: [{ name: deploymentStorageContainerName }]
+    }
+    roleAssignments: [
+      {
+        roleDefinitionIdOrName: storageBlobDataOwner
+        principalId: funcUserAssignedIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+      }
+      {
+        roleDefinitionIdOrName: storageQueueDataContributor
+        principalId: funcUserAssignedIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+      }
+      {
+        roleDefinitionIdOrName: storageTableDataContributor
+        principalId: funcUserAssignedIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+      }
+      {
+        roleDefinitionIdOrName: storageBlobDataOwner
+        principalId: userPrincipalId
+        principalType: 'User'
+      }
+      {
+        roleDefinitionIdOrName: storageQueueDataContributor
+        principalId: userPrincipalId
+        principalType: 'User'
+      }
+      {
+        roleDefinitionIdOrName: storageTableDataContributor
+        principalId: userPrincipalId
+        principalType: 'User'
+      }
+    ]
+  }
+}
+
+module functionAppPlan 'br/public:avm/res/web/serverfarm:0.7.0' = {
+  scope: rg
+  name: functionAppPlanName
+  params: {
+    name: functionAppPlanName
+    location: location
+    tags: tags
+    skuName: 'FC1'
+    reserved: true
+  }
+}
+
+// Connector Namespace + sharepointonline connection.
+module connectorNamespace './connectorNamespace.bicep' = {
+  scope: rg
+  name: connectorNamespaceName
+  params: {
+    name: connectorNamespaceName
+    location: connectorNamespaceLocation
+    tags: tags
+    connectionName: connectorNamespaceConnectionName
+    functionAppPrincipalId: funcUserAssignedIdentity.outputs.principalId
+    userPrincipalId: userPrincipalId
+  }
+}
+
+var allAppSettings = {
+  AzureWebJobsStorage__credential: 'managedidentity'
+  AzureWebJobsStorage__clientId: funcUserAssignedIdentity.outputs.clientId
+  AzureWebJobsStorage__accountName: storageAccount.outputs.name
+  APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'ClientId=${funcUserAssignedIdentity.outputs.clientId};Authorization=AAD'
+  APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
+  AZURE_CLIENT_ID: funcUserAssignedIdentity.outputs.clientId
+  SHAREPOINTONLINE_CONNECTION_RUNTIME_URL: connectorNamespace.outputs.sharepointConnectionRuntimeUrl
+}
+
+module functionApp 'br/public:avm/res/web/site:0.22.0' = {
+  scope: rg
+  name: functionAppName
+  params: {
+    name: functionAppName
+    location: location
+    tags: union(tags, { 'azd-service-name': 'function-app' })
+    kind: 'functionapp,linux'
+    serverFarmResourceId: functionAppPlan.outputs.resourceId
+    httpsOnly: true
+    managedIdentities: {
+      userAssignedResourceIds: [
+        '${funcUserAssignedIdentity.outputs.resourceId}'
+      ]
+    }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storageAccount.outputs.primaryBlobEndpoint}${deploymentStorageContainerName}'
+          authentication: {
+            type: 'UserAssignedIdentity'
+            userAssignedIdentityResourceId: funcUserAssignedIdentity.outputs.resourceId
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        instanceMemoryMB: 2048
+        maximumInstanceCount: 100
+      }
+      runtime: {
+        name: 'python'
+        version: '3.13'
+      }
+    }
+    siteConfig: {
+      alwaysOn: false
+    }
+    configs: [
+      {
+        name: 'appsettings'
+        properties: allAppSettings
+      }
+    ]
+  }
+}
+
+@description('The resource ID of the created Resource Group.')
+output resourceGroupResourceId string = rg.id
+
+@description('The name of the created Resource Group.')
+output resourceGroupName string = rg.name
+
+@description('The name of the created Function App.')
+output functionAppName string = functionApp.outputs.name
+
+@description('The default hostname of the created Function App.')
+output functionAppDefaultHostname string = functionApp.outputs.defaultHostname
+
+@description('The name of the created Connector Namespace.')
+output connectorNamespaceName string = connectorNamespace.outputs.name
+
+@description('The name of the created SharePoint connection on the Connector Namespace.')
+output connectorNamespaceConnectionName string = connectorNamespace.outputs.connectionName
+
+@description('SharePoint site URL to monitor.')
+output sharepointSiteUrl string = sharepointSiteUrl
+
+@description('SharePoint document library name to monitor.')
+output sharepointLibraryName string = sharepointLibraryName
