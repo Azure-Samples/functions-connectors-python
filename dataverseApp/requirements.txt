@@ -1,0 +1,4 @@
+# Azure Functions dependencies
+azure-functions>=2.2.0b4
+# Managed-identity auth for calling the Dataverse connector action (List rows).
+azure-identity
