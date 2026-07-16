@@ -9,16 +9,13 @@ the trigger, plus a managed-identity HTTP function that **calls** a connector ac
 | `OnDataverseRowChanged` | Trigger | [`GetOnNewItems_V2`](https://learn.microsoft.com/en-us/connectors/commondataservice/#when-a-row-is-added-(admin-only)-[deprecated]) | Fires when a **new row is added** to the configured Dataverse table |
 | `ListDataverseRows` | Action (HTTP) | [`GetItems_V2` — List rows](https://learn.microsoft.com/en-us/connectors/commondataservice/#list-rows-(legacy)-[deprecated]) | On-demand endpoint that **calls** the connector to list rows from the table |
 
-> **Change scope:** the connector-namespace + Functions callback path is validated end-to-end for
-> the **new-row** trigger (`GetOnNewItems_V2`). The classic "added, modified or deleted" webhook
-> operation (`SubscribeWebhookTrigger` — *"When a row is added, modified or deleted"*) is not
-> compatible with the connector namespace today, so this sample fires on **row creation**.
->
-> **Known issue:** subscribing to `SubscribeWebhookTrigger` (*"When a row is added, modified or
-> deleted"*) via Connector Namespace currently returns **HTTP 500** (a `Regex.Match` null-reference
-> failure) when the trigger config is created. The connector team is actively working on adding
-> `SubscribeWebhookTrigger` support through Connector Namespace; until that lands, use the
-> `GetOnNewItems_V2` new-row trigger this sample demonstrates.
+> **Trigger scope & known issue:** this sample uses the **new-row** trigger `GetOnNewItems_V2`
+> (*"When a row is created"*), which is validated end-to-end over the Connector Namespace + Functions
+> callback path. The broader `SubscribeWebhookTrigger` (*"When a row is added, modified or deleted"*)
+> is **not usable via Connector Namespace yet**: creating its trigger config currently fails with
+> **HTTP 500** (a `Regex.Match` null-reference error). The Connector Namespace team is actively working on
+> adding `SubscribeWebhookTrigger` support; until it ships, use the `GetOnNewItems_V2` trigger this
+> sample demonstrates.
 
 > **Why `commondataservice` (and not `commondataserviceforapps`):** this sample deliberately targets
 > the legacy **[`commondataservice`](https://learn.microsoft.com/en-us/connectors/commondataservice/)** connector. Its intended successor, `commondataserviceforapps`,
