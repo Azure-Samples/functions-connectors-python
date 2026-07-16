@@ -5,16 +5,15 @@ import azure.functions as func
 import json
 import logging
 import os
-import urllib.error
-import urllib.parse
-import urllib.request
 
-from azure.identity import AzureCliCredential, ManagedIdentityCredential
+from azure.connectors import (
+    AzureIdentityTokenProvider,
+    CommondataserviceClient,
+    ConnectorException,
+)
+from azure.identity.aio import AzureCliCredential, ManagedIdentityCredential
 
 app = func.FunctionApp()
-
-# OAuth scope every managed-connector runtime URL expects (the API Hub audience).
-APIHUB_SCOPE = "https://apihub.azure.com/.default"
 
 
 # ------------------------------------------------------------------------------
@@ -77,23 +76,24 @@ def on_dataverse_row_changed(payload: str) -> None:
 # ------------------------------------------------------------------------------
 # ListDataverseRows — Microsoft Dataverse connector ACTION (List rows)
 #
-# Demonstrates *calling* a connector action (not just receiving a trigger). The
-# function authenticates to the connection's runtime URL with the function app's
-# managed identity and invokes the connector's "List rows" operation:
+# Demonstrates *calling* a connector action (not just receiving a trigger) with
+# the typed `azure-connectors` SDK. A CommondataserviceClient targets the
+# connection's runtime URL and invokes the Dataverse "List rows" operation:
 #
-#   GET {runtimeUrl}/v2/datasets/{dataset}/tables/{table}/items
+#   rows = await CommondataserviceClient(runtime_url, token_provider) \
+#              .list_records_async(entity_name=table, top="5")
 #
-# where {dataset} (the org URL) and {table} (entity set plural name) are each
-# double URL-encoded per the connector's `x-ms-url-encoding: "double"` contract.
-# The call is authorized by the `functionapp-msi` access policy granted on the
-# connection. Auth is explicit per environment: in Azure the function app's
+# The SDK acquires an API Hub token (https://apihub.azure.com/.default) through
+# the token provider and calls the connector; the call is authorized by the
+# `functionapp-msi` access policy granted on the connection. Auth is explicit per
+# environment (DefaultAzureCredential is not used): in Azure the function app's
 # managed identity, and locally the signed-in `az login` (user) identity.
 #
 #   HTTP:   GET /api/rows?table=accounts&top=5
 # ------------------------------------------------------------------------------
 @app.function_name(name="ListDataverseRows")
 @app.route(route="rows", methods=["GET"])
-def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
+async def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
     """List rows from the configured Dataverse table via the connector action."""
     logging.info("ListDataverseRows action invoked.")
 
@@ -104,28 +104,12 @@ def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
         )
 
-    dataset = os.environ.get("DATAVERSE_ENVIRONMENT_URL") or os.environ.get(
-        "DATAVERSE_ENVIRONMENT_NAME"
-    )
-    if not dataset:
-        return func.HttpResponse(
-            "Set either DATAVERSE_ENVIRONMENT_URL or DATAVERSE_ENVIRONMENT_NAME.",
-            status_code=500,
-        )
-
-    # Table and row count are overridable per request; fall back to app settings.
+    # Table (entity set / plural name) and row count are overridable per request;
+    # fall back to app settings.
     table = req.params.get("table") or os.environ.get(
         "DATAVERSE_TABLE_NAME", "accounts"
     )
     top = req.params.get("top", "5")
-
-    # Both path segments are double URL-encoded (x-ms-url-encoding: "double").
-    enc_dataset = urllib.parse.quote(urllib.parse.quote(dataset, safe=""), safe="")
-    enc_table = urllib.parse.quote(urllib.parse.quote(table, safe=""), safe="")
-    url = (
-        f"{runtime_url.rstrip('/')}/v2/datasets/{enc_dataset}"
-        f"/tables/{enc_table}/items?$top={urllib.parse.quote(str(top))}"
-    )
 
     # Explicit credential per environment (DefaultAzureCredential is not used):
     #   - In Azure (IDENTITY_ENDPOINT is injected) -> the function app's managed identity.
@@ -135,20 +119,24 @@ def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
     else:
         credential = AzureCliCredential()
 
-    token = credential.get_token(APIHUB_SCOPE).token
-    request = urllib.request.Request(
-        url,
-        method="GET",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
-    )
-
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        body = error.read().decode("utf-8", errors="replace")
-        logging.error(f"Connector action failed ({error.code}): {body}")
-        return func.HttpResponse(body, status_code=error.code, mimetype="application/json")
+        async with credential:
+            token_provider = AzureIdentityTokenProvider(credential)
+            async with CommondataserviceClient(
+                runtime_url, token_provider=token_provider
+            ) as client:
+                payload = await client.list_records_async(
+                    entity_name=table, top=str(top)
+                )
+    except ConnectorException as error:
+        logging.error(
+            f"Connector action failed ({error.status_code}): {error.response_body}"
+        )
+        return func.HttpResponse(
+            error.response_body,
+            status_code=error.status_code,
+            mimetype="application/json",
+        )
 
     rows = payload.get("value", []) if isinstance(payload, dict) else []
     logging.info(f"Retrieved '{len(rows)}' row(s) from table '{table}'.")

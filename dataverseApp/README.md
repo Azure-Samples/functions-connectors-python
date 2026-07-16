@@ -7,7 +7,7 @@ the trigger, plus a managed-identity HTTP function that **calls** a connector ac
 | Function | Type | Connector operation | Description |
 | --- | --- | --- | --- |
 | `OnDataverseRowChanged` | Trigger | [`GetOnNewItems_V2`](https://learn.microsoft.com/en-us/connectors/commondataservice/#when-a-row-is-added-(admin-only)-[deprecated]) | Fires when a **new row is added** to the configured Dataverse table |
-| `ListDataverseRows` | Action (HTTP) | [`GetItems_V2` — List rows](https://learn.microsoft.com/en-us/connectors/commondataservice/#list-rows-(legacy)-[deprecated]) | On-demand endpoint that **calls** the connector to list rows from the table |
+| `ListDataverseRows` | Action (HTTP) | [List rows](https://learn.microsoft.com/en-us/connectors/commondataservice/#list-rows-(legacy)-[deprecated]) (via `azure-connectors` SDK) | On-demand endpoint that **calls** the connector to list rows from the table |
 
 > **Trigger scope & known issue:** this sample uses the **new-row** trigger `GetOnNewItems_V2`
 > (*"When a row is created"*), which is validated end-to-end over the Connector Namespace + Functions
@@ -99,19 +99,23 @@ azd hooks run postdeploy
 ## Call the connector action (List rows)
 
 Besides *receiving* the trigger, `ListDataverseRows` *calls* the Dataverse **List rows** action
-against the connection's runtime URL:
+against the connection's runtime URL using the typed
+[`azure-connectors`](https://pypi.org/project/azure-connectors/) SDK:
 
-```
-GET {runtimeUrl}/v2/datasets/{dataset}/tables/{table}/items?$top=5
+```python
+async with CommondataserviceClient(runtime_url, token_provider=token_provider) as client:
+    payload = await client.list_records_async(entity_name=table, top="5")
 ```
 
-`{dataset}` (org URL) and `{table}` (entity set plural name) are each **double URL-encoded** per the
-connector's `x-ms-url-encoding: "double"` contract. The call is authenticated with a bearer token for
-the API Hub scope `https://apihub.azure.com/.default`, using an **explicit credential per environment**
-(not `DefaultAzureCredential`): in Azure the function app's **system-assigned managed identity**
-(`ManagedIdentityCredential`, no client id), and locally your `az login` (user) identity
-(`AzureCliCredential`). The environment is detected via the `IDENTITY_ENDPOINT` variable that
-Azure injects when managed identity is available.
+The SDK issues the connector's List rows request (`GET {runtimeUrl}/api/data/v9.1/{entity}?$top=5`)
+and returns the parsed OData payload — no manual URL building or encoding. The connection's runtime
+URL already identifies the Dataverse environment, so the action needs only the **table** (entity set
+plural name); it does **not** take the org URL. The SDK's `token_provider` authenticates with a bearer
+token for the API Hub scope `https://apihub.azure.com/.default`, using an **explicit credential per
+environment** (not `DefaultAzureCredential`): in Azure the function app's **system-assigned managed
+identity** (`ManagedIdentityCredential`, no client id), and locally your `az login` (user) identity
+(`AzureCliCredential`). The environment is detected via the `IDENTITY_ENDPOINT` variable that Azure
+injects when managed identity is available.
 
 > **Why `IDENTITY_ENDPOINT`?** On App Service, Azure Functions, and Container Apps, the platform
 > injects the `IDENTITY_ENDPOINT` and `IDENTITY_HEADER` environment variables that expose the local
@@ -159,8 +163,9 @@ pip install -r requirements.txt
 func start
 ```
 
-Set `COMMONDATASERVICE_CONNECTION_RUNTIME_URL` (the connection's runtime URL), the environment URL
-(**or** friendly name) and the table in `local.settings.json` before starting. Locally the action
+Set `COMMONDATASERVICE_CONNECTION_RUNTIME_URL` (the connection's runtime URL) and the table in
+`local.settings.json` before starting. The action itself needs only the runtime URL and table — the
+environment is identified by the connection. Locally the action
 uses your signed-in `az login` (user) identity (`AzureCliCredential`). To call the action from your
 machine, grant your own identity an access policy on the connection first:
 
