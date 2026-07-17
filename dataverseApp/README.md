@@ -7,23 +7,18 @@ the trigger, plus a managed-identity HTTP function that **calls** a connector ac
 | Function | Type | Connector operation | Description |
 | --- | --- | --- | --- |
 | `OnDataverseRowChanged` | Trigger | [`GetOnNewItems_V2`](https://learn.microsoft.com/en-us/connectors/commondataservice/#when-a-row-is-added-(admin-only)-[deprecated]) | Fires when a **new row is added** to the configured Dataverse table |
-| `ListDataverseRows` | Action (HTTP) | [List rows](https://learn.microsoft.com/en-us/connectors/commondataservice/#list-rows-(legacy)-[deprecated]) (via `azure-connectors` SDK) | On-demand endpoint that **calls** the connector to list rows from the table |
+| `ListDataverseRows` | Action (HTTP) | [GetItems_V2](https://learn.microsoft.com/en-us/connectors/commondataservice/#list-rows-(legacy)-[deprecated]) (via `azure-connectors` SDK) | On-demand endpoint that **calls** the connector to list rows from the table |
 
 > **Trigger scope & known issue:** this sample uses the **new-row** trigger `GetOnNewItems_V2`
-> (*"When a row is created"*), which is validated end-to-end over the Connector Namespace + Functions
-> callback path. The broader `SubscribeWebhookTrigger` (*"When a row is added, modified or deleted"*)
-> is **not usable via Connector Namespace yet**: creating its trigger config currently fails with
-> **HTTP 500** (a `Regex.Match` null-reference error). The Connector Namespace team is actively working on
-> adding `SubscribeWebhookTrigger` support; until it ships, use the `GetOnNewItems_V2` trigger this
-> sample demonstrates.
+> (*"When a row is created"*), validated end-to-end over Connector Namespace. The broader
+> `SubscribeWebhookTrigger` (*"added, modified or deleted"*) is **not usable via Connector Namespace
+> yet** — creating its trigger config currently fails with **HTTP 500** (`Regex.Match` null-reference).
+> The team is adding support; until then, use `GetOnNewItems_V2`.
 
-> **Why `commondataservice` (and not `commondataserviceforapps`):** this sample deliberately targets
-> the legacy **[`commondataservice`](https://learn.microsoft.com/en-us/connectors/commondataservice/)** connector. Its intended successor, `commondataserviceforapps`,
-> has only been shipped to Power Automate and is **not yet available for Logic Apps / Connector
-> Namespaces**. By prior consensus with the connector owners, the legacy `commondataservice` connector
-> remains supported in production for Connector Namespace until (and unless) the replacement is finally released
-> to that environment. Do not switch this sample to `commondataserviceforapps` until it is generally
-> available in the Logic Apps / Connector Namespace environment.
+> **Why `commondataservice` (not `commondataserviceforapps`):** the successor connector ships only to
+> Power Automate and **isn't available for Logic Apps / Connector Namespaces yet**. The legacy
+> [`commondataservice`](https://learn.microsoft.com/en-us/connectors/commondataservice/) stays
+> supported there until it is. Don't switch until the replacement is available in that environment.
 
 ## What you configure
 
@@ -42,7 +37,7 @@ Provide **either** `DATAVERSE_ENVIRONMENT_NAME` (recommended — the URL is disc
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13](https://www.python.org/downloads/)
+- [Python 3.13+](https://www.python.org/downloads/)
 - A Microsoft Dataverse environment and an account with access to the target table
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
@@ -107,38 +102,20 @@ async with CommondataserviceClient(runtime_url, token_provider=token_provider) a
     payload = await client.list_records_async(entity_name=table, top="5")
 ```
 
-The SDK issues the connector's List rows request (`GET {runtimeUrl}/api/data/v9.1/{entity}?$top=5`)
-and returns the parsed OData payload — no manual URL building or encoding. The connection's runtime
-URL already identifies the Dataverse environment, so the action needs only the **table** (entity set
-plural name); it does **not** take the org URL. The SDK's `token_provider` authenticates with a bearer
-token for the API Hub scope `https://apihub.azure.com/.default`, using an **explicit credential per
-environment** (not `DefaultAzureCredential`): in Azure the function app's **system-assigned managed
-identity** (`ManagedIdentityCredential`, no client id), and locally your `az login` (user) identity
-(`AzureCliCredential`). The environment is detected via the `IDENTITY_ENDPOINT` variable that Azure
-injects when managed identity is available.
+The SDK builds the List rows request and returns the parsed OData payload — no manual URL building or
+encoding. The runtime URL already identifies the environment, so the action needs only the **table**
+(entity set plural name). Its `token_provider` uses an **explicit credential per environment** (not
+`DefaultAzureCredential`): in Azure the function app's **system-assigned managed identity** (no client
+id), and locally your `az login` identity. The environment is detected via the `IDENTITY_ENDPOINT`
+variable that Azure injects when managed identity is available.
 
-> **Why `IDENTITY_ENDPOINT`?** On App Service, Azure Functions, and Container Apps, the platform
-> injects the `IDENTITY_ENDPOINT` and `IDENTITY_HEADER` environment variables that expose the local
-> managed-identity token endpoint (the `api-version=2019-08-01` MSI REST protocol). These are
-> documented by Microsoft and are exactly what the Azure Identity SDK reads under the hood to select
-> the App Service / Functions MI source — see
-> [Managed identities for App Service and Azure Functions → *Connect to Azure services in app code* (HTTP GET tab)](https://learn.microsoft.com/azure/app-service/overview-managed-identity?tabs=portal%2Chttp#connect-to-azure-services-in-app-code).
-> Because the variable is present **iff** the platform MI endpoint is available (and absent locally),
-> its presence is a reliable "running in Azure with MI" signal for this host — and it survives Flex
-> Consumption, where `WEBSITE_INSTANCE_ID` is *not* set (Flex is not classed as App Service by the
-> Functions host).
->
-> **Caveat / scope:** this signal is specific to App Service, Functions, and Container Apps. Other
-> managed-identity hosts differ — VM/VMSS use the [IMDS endpoint](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/how-to-use-vm-token)
-> (`169.254.169.254`) and don't set `IDENTITY_ENDPOINT`, and AKS workload identity uses
-> `AZURE_FEDERATED_TOKEN_FILE`. So treat `IDENTITY_ENDPOINT` as the auth-source signal for *this*
-> host, not as a general-purpose "am I in Azure?" detector.
->
-> **Production guidance:** the local-vs-cloud branch exists purely for developer convenience in this
-> sample. A production app should pick **one** credential and use it unconditionally — in Azure that
-> means `ManagedIdentityCredential` only (no local/CLI fallback path shipped to the cloud), so there is
-> no environment-detection branch to reason about, no accidental fall-through to a developer identity,
-> and one deterministic auth path to secure and audit.
+> **Notes on `IDENTITY_ENDPOINT`:** App Service, Functions, and Container Apps inject this variable to
+> expose the local MI token endpoint, so its presence is a reliable "running in Azure with MI" signal
+> (it survives Flex Consumption, unlike `WEBSITE_INSTANCE_ID`) — see
+> [managed identity docs](https://learn.microsoft.com/azure/app-service/overview-managed-identity?tabs=portal%2Chttp#connect-to-azure-services-in-app-code).
+> It's host-specific (VM/VMSS use IMDS, AKS uses `AZURE_FEDERATED_TOKEN_FILE`), so don't treat it as a
+> general "am I in Azure?" check. The local-vs-cloud branch is a dev convenience — **production apps
+> should pick one credential** and use it unconditionally.
 
 For the token exchange to succeed, that identity must have an **access policy** on the connection.
 The infrastructure grants:
@@ -179,8 +156,9 @@ The connector trigger needs the **Preview** Functions Extension Bundle, already 
 
 ## Verify
 
-The Dataverse connector namespace isn't surfaced in the portal yet, so verify from the CLI. Capture
-the names created by `azd up`:
+The Dataverse connector namespace can be **viewed** in the portal once created via ARM/CLI, but
+**creating or updating** connections and trigger configs isn't supported there yet — so drive those
+from the CLI. Capture the names created by `azd up`:
 
 ```bash
 RG=$(azd env get-value resourceGroupName)

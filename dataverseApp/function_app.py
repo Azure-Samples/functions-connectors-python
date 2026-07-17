@@ -15,22 +15,25 @@ from azure.identity.aio import AzureCliCredential, ManagedIdentityCredential
 
 app = func.FunctionApp()
 
+# Dataverse target + connection read from app settings once at startup.
+DATAVERSE_ENVIRONMENT = os.environ.get(
+    "DATAVERSE_ENVIRONMENT_URL"
+) or os.environ.get("DATAVERSE_ENVIRONMENT_NAME", "<unset>")
+DATAVERSE_TABLE = os.environ.get("DATAVERSE_TABLE_NAME", "accounts")
+RUNTIME_URL = os.environ.get("COMMONDATASERVICE_CONNECTION_RUNTIME_URL")
+# Azure injects IDENTITY_ENDPOINT when managed identity is available -> use
+# it to pick the credential (MI in Azure, `az login` locally).
+IN_AZURE = bool(os.environ.get("IDENTITY_ENDPOINT"))
+
 
 # ------------------------------------------------------------------------------
-# OnDataverseRowChanged — Microsoft Dataverse connector (generic connector API)
+# OnDataverseRowChanged — Dataverse connector trigger (GetOnNewItems_V2).
 #
-# Fires when a new row is added to the configured Dataverse table. The trigger
-# config (created in the post-deploy script) targets:
-#   connector : commondataservice
-#   operation : GetOnNewItems_V2
-#   parameters:
-#     dataset = <org URL>        -> DATAVERSE_ENVIRONMENT_URL (the DataSet name,
-#                                   e.g. https://org.crm.dynamics.com)
-#     table   = <table>          -> DATAVERSE_TABLE_NAME (entity set / plural
-#                                   logical name, e.g. "accounts")
-#
-# The connector polls Dataverse server-side (default every few minutes) and posts
-# each new row to this function's connector webhook callback.
+# Fires when a new row is added to the configured table. The post-deploy script
+# creates the trigger config (connector=commondataservice, operation=
+# GetOnNewItems_V2) with dataset=<org URL> and table=<entity set plural name>.
+# The connector polls Dataverse server-side and posts each new row to this
+# function's connector webhook callback.
 # ------------------------------------------------------------------------------
 @app.function_name(name="OnDataverseRowChanged")
 @app.connector_trigger(arg_name="payload")
@@ -38,11 +41,9 @@ def on_dataverse_row_changed(payload: str) -> None:
     """Triggered when a new Dataverse row is added."""
     logging.info("OnDataverseRowChanged trigger received.")
 
-    environment = os.environ.get("DATAVERSE_ENVIRONMENT_URL") or os.environ.get(
-        "DATAVERSE_ENVIRONMENT_NAME", "<unset>"
+    logging.info(
+        f"Environment: '{DATAVERSE_ENVIRONMENT}', Table: '{DATAVERSE_TABLE}'."
     )
-    table = os.environ.get("DATAVERSE_TABLE_NAME", "<unset>")
-    logging.info(f"Environment: '{environment}', Table: '{table}'.")
 
     data = json.loads(payload)
 
@@ -60,77 +61,70 @@ def on_dataverse_row_changed(payload: str) -> None:
         # The payload is the newly added Dataverse row. The connector tags each
         # item with an "ItemInternalId"; the row's primary key is "<entity>id"
         # (e.g. accountid), derived from the singular table name.
-        singular = table[:-1] if table.endswith("s") else table
+        singular = (
+            DATAVERSE_TABLE[:-1]
+            if DATAVERSE_TABLE.endswith("s")
+            else DATAVERSE_TABLE
+        )
         record_id = (
             row.get("ItemInternalId")
             or row.get(f"{singular}id")
             or "<unset>"
         )
 
-        logging.info(f"New '{table}' row id: '{record_id}'.")
+        logging.info(f"New '{DATAVERSE_TABLE}' row id: '{record_id}'.")
         logging.info(f"Columns in payload: {list(row.keys())}.")
 
     logging.info(f"Batch contains '{len(rows)}' new row(s).")
 
 
 # ------------------------------------------------------------------------------
-# ListDataverseRows — Microsoft Dataverse connector ACTION (List rows)
+# ListDataverseRows — Dataverse connector action (List rows).
 #
-# Demonstrates *calling* a connector action (not just receiving a trigger) with
-# the typed `azure-connectors` SDK. A CommondataserviceClient targets the
-# connection's runtime URL and invokes the Dataverse "List rows" operation:
+# Demonstrates *calling* a connector action (not just receiving a trigger)
+# with the typed `azure-connectors` SDK:
+# CommondataserviceClient.list_records_async targets the connection's runtime
+# URL and returns the parsed OData rows. The SDK gets an API Hub token via the
+# token provider; the call is authorized by the `functionapp-msi` access
+# policy on the connection. Auth is explicit per environment (not
+# DefaultAzureCredential): managed identity in Azure, the signed-in
+# `az login` (user) identity locally.
 #
-#   rows = await CommondataserviceClient(runtime_url, token_provider) \
-#              .list_records_async(entity_name=table, top="5")
-#
-# The SDK acquires an API Hub token (https://apihub.azure.com/.default) through
-# the token provider and calls the connector; the call is authorized by the
-# `functionapp-msi` access policy granted on the connection. Auth is explicit per
-# environment (DefaultAzureCredential is not used): in Azure the function app's
-# managed identity, and locally the signed-in `az login` (user) identity.
-#
-#   HTTP:   GET /api/rows?table=accounts&top=5
+#   GET /api/rows?table=accounts&top=5
 # ------------------------------------------------------------------------------
 @app.function_name(name="ListDataverseRows")
 @app.route(route="rows", methods=["GET"])
 async def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
-    """List rows from the configured Dataverse table via the connector action."""
+    """List rows from the configured Dataverse table via the connector."""
     logging.info("ListDataverseRows action invoked.")
 
-    runtime_url = os.environ.get("COMMONDATASERVICE_CONNECTION_RUNTIME_URL")
-    if not runtime_url:
+    if not RUNTIME_URL:
         return func.HttpResponse(
             "COMMONDATASERVICE_CONNECTION_RUNTIME_URL is not configured.",
             status_code=500,
         )
 
-    # Table (entity set / plural name) and row count are overridable per request;
-    # fall back to app settings.
-    table = req.params.get("table") or os.environ.get(
-        "DATAVERSE_TABLE_NAME", "accounts"
-    )
+    # Table and row count are overridable per request; else the default.
+    table = req.params.get("table") or DATAVERSE_TABLE
     top = req.params.get("top", "5")
 
-    # Explicit credential per environment (DefaultAzureCredential is not used):
-    #   - In Azure (IDENTITY_ENDPOINT is injected) -> the function app's managed identity.
-    #   - Locally (not set) -> the signed-in `az login` (user) identity.
-    if os.environ.get("IDENTITY_ENDPOINT"):
-        credential = ManagedIdentityCredential()
-    else:
-        credential = AzureCliCredential()
+    credential = (
+        ManagedIdentityCredential() if IN_AZURE else AzureCliCredential()
+    )
 
     try:
         async with credential:
             token_provider = AzureIdentityTokenProvider(credential)
             async with CommondataserviceClient(
-                runtime_url, token_provider=token_provider
+                RUNTIME_URL, token_provider=token_provider
             ) as client:
                 payload = await client.list_records_async(
                     entity_name=table, top=str(top)
                 )
     except ConnectorException as error:
         logging.error(
-            f"Connector action failed ({error.status_code}): {error.response_body}"
+            f"Connector action failed ({error.status_code}): "
+            f"{error.response_body}"
         )
         return func.HttpResponse(
             error.response_body,
