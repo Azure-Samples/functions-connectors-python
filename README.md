@@ -37,11 +37,12 @@ The connector platform handles webhook registration, OAuth flows, token refresh,
 
 ## Getting-started samples
 
-Seven self-contained Azure Functions apps, each deployable with `azd up`:
+Eight self-contained Azure Functions apps, each deployable with `azd up`:
 
 | App | Connector | Triggers demonstrated |
 |---|---|---|
 | [`azureblobApp/`](./azureblobApp) | Azure Blob | `OnAzureBlobUpdatedFile` |
+| [`dataverseApp/`](./dataverseApp) | Microsoft Dataverse (Common Data Service) | `OnDataverseRowChanged` (when a new row is added) |
 | [`kustoApp/`](./kustoApp) | Azure Data Explorer (Kusto) | `OnKustoQueryResult` |
 | [`office365App/`](./office365App) | Office 365 Outlook | `OnNewEmail`, `OnFlaggedEmail`, `OnNewMentionMeEmail`, `OnNewCalendarEvent`, `OnUpcomingEvent` |
 | [`onedriveApp/`](./onedriveApp) | OneDrive for Business | `OnOneDriveNewFile`, `OnOneDriveUpdatedFile` |
@@ -61,6 +62,10 @@ Seven self-contained Azure Functions apps, each deployable with `azd up`:
 ### `azureblobApp` — Azure Blob
 
 A single function `OnAzureBlobUpdatedFile` that fires when blobs in a watched Azure Blob container are updated. The payload contains `Name`, `Path`, `Size`, `LastModified` fields.
+
+### `dataverseApp` — Microsoft Dataverse (Common Data Service)
+
+A single function `OnDataverseRowChanged` that fires when a new row is **added** to a Dataverse table (operation `GetOnNewItems_V2`). The **environment** and **table name** are configurable via `azd env set`. Supply the environment by friendly name (`DATAVERSE_ENVIRONMENT_NAME`, auto-resolved to the org URL via Global Discovery) or explicit URL (`DATAVERSE_ENVIRONMENT_URL`), plus `DATAVERSE_TABLE_NAME` (the entity set / plural name, e.g. `accounts`). The environment URL is passed to the trigger as the `dataset` value. Note: these row triggers are Admin Only and require Global Read on the table.
 
 ### `kustoApp` — Azure Data Explorer (Kusto)
 
