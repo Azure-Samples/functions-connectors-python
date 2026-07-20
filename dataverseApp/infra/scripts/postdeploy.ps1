@@ -180,8 +180,9 @@ $functionName  = 'OnDataverseRowChanged'
 $operationName = 'GetOnNewItems_V2'
 $triggerName   = "$connectorNamespaceConnectionName-$($functionName.ToLower())"
 # Read the app's real default host rather than assuming ".azurewebsites.net" (which differs for
-# custom domains and sovereign clouds, e.g. .azurewebsites.us / .chinacloudsites.cn).
-$functionHost  = (az functionapp show -g $resourceGroupName -n $functionAppName --query "defaultHostName" -o tsv)
+# custom domains and sovereign clouds, e.g. .azurewebsites.us / .chinacloudsites.cn). Query at the
+# ARM resource level — `az functionapp show` can return empty host fields for Flex Consumption apps.
+$functionHost  = (az resource show -g $resourceGroupName -n $functionAppName --resource-type "Microsoft.Web/sites" --query "properties.defaultHostName" -o tsv)
 if (-not $functionHost) {
     Write-Host "ERROR: could not resolve defaultHostName for $functionAppName." -ForegroundColor Red
     exit 1

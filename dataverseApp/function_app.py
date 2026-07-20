@@ -19,6 +19,10 @@ app = func.FunctionApp()
 DATAVERSE_ENVIRONMENT = os.environ.get(
     "DATAVERSE_ENVIRONMENT_URL"
 ) or os.environ.get("DATAVERSE_ENVIRONMENT_NAME", "<unset>")
+# The dataset for connector data operations is the Dataverse org URL (e.g.
+# https://org.crm.dynamics.com), read directly so the action matches the
+# trigger's dataset value.
+DATAVERSE_DATASET = os.environ.get("DATAVERSE_ENVIRONMENT_URL", "")
 DATAVERSE_TABLE = os.environ.get("DATAVERSE_TABLE_NAME", "accounts")
 RUNTIME_URL = os.environ.get("COMMONDATASERVICE_CONNECTION_RUNTIME_URL")
 # Azure injects IDENTITY_ENDPOINT when managed identity is available -> use
@@ -83,10 +87,11 @@ def on_dataverse_row_changed(payload: str) -> None:
 #
 # Demonstrates *calling* a connector action (not just receiving a trigger)
 # with the typed `azure-connectors` SDK:
-# CommondataserviceClient.list_records_async targets the connection's runtime
-# URL and returns the parsed OData rows. The SDK gets an API Hub token via the
-# token provider; the call is authorized by the `functionapp-msi` access
-# policy on the connection. Auth is explicit per environment (not
+# CommondataserviceClient.get_items_async targets the connection's runtime URL
+# and returns the parsed OData rows for the dataset "List rows (legacy)"
+# operation (GetItems_V2). The SDK gets an API Hub token via the token
+# provider; the call is authorized by the `functionapp-msi` access policy on
+# the connection. Auth is explicit per environment (not
 # DefaultAzureCredential): managed identity in Azure, the signed-in
 # `az login` (user) identity locally.
 #
@@ -104,7 +109,14 @@ async def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
         )
 
-    # Table and row count are overridable per request; else the default.
+    if not DATAVERSE_DATASET:
+        return func.HttpResponse(
+            "DATAVERSE_ENVIRONMENT_URL is not configured.",
+            status_code=500,
+        )
+
+    # Table and row count are overridable per request; else the default. Use
+    # the entity set (plural) name, e.g. "accounts".
     table = req.params.get("table") or DATAVERSE_TABLE
     top = req.params.get("top", "5")
 
@@ -118,8 +130,8 @@ async def list_dataverse_rows(req: func.HttpRequest) -> func.HttpResponse:
             async with CommondataserviceClient(
                 RUNTIME_URL, token_provider=token_provider
             ) as client:
-                payload = await client.list_records_async(
-                    entity_name=table, top=str(top)
+                payload = await client.get_items_async(
+                    dataset=DATAVERSE_DATASET, table=table, top=str(top)
                 )
     except ConnectorException as error:
         logging.error(
