@@ -108,10 +108,17 @@ function New-TriggerConfig {
     )
 
     $triggerName = "$connectorNamespaceConnectionName-$($FunctionName.ToLower())"
-    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$FunctionName&code=$connectorExtensionKey"
+    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$FunctionName"
     $parametersShorthand = "[" + (($Parameters | ForEach-Object { "{name:$($_.name),value:'$($_.value)'}" }) -join ",") + "]"
     $notifFile = Join-Path $PSScriptRoot ".notification-details-$([System.Guid]::NewGuid().ToString('N')).json"
-    @{ callbackUrl = $callbackUrl } | ConvertTo-Json -Compress | Set-Content -Path $notifFile -NoNewline
+    @{
+        callbackUrl = $callbackUrl
+        authentication = @{
+            type = "QueryString"
+            name = "code"
+            value = $connectorExtensionKey
+        }
+    } | ConvertTo-Json -Depth 3 -Compress | Set-Content -Path $notifFile -NoNewline
 
     Write-Host "  Creating trigger: $FunctionName -> $OperationName" -ForegroundColor Cyan
 

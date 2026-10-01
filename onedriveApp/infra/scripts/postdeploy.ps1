@@ -279,10 +279,17 @@ foreach ($trigger in $triggers) {
     $functionName = $trigger.functionName
     $operationName = $trigger.operationName
     $triggerName = "$onedriveConnectionName-$($functionName.ToLower())"
-    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$functionName&code=$connectorExtensionKey"
+    $callbackUrl = "https://$functionAppName.azurewebsites.net/runtime/webhooks/connector?functionName=$functionName"
     $parametersJson = "[{name:folderId,value:'$onedriveFolderId'}]"
     $notifFile = Join-Path $PSScriptRoot ".notification-details-$([System.Guid]::NewGuid().ToString('N')).json"
-    @{ callbackUrl = $callbackUrl } | ConvertTo-Json -Compress | Set-Content -Path $notifFile -NoNewline
+    @{
+        callbackUrl = $callbackUrl
+        authentication = @{
+            type = "QueryString"
+            name = "code"
+            value = $connectorExtensionKey
+        }
+    } | ConvertTo-Json -Depth 3 -Compress | Set-Content -Path $notifFile -NoNewline
 
     Write-Host ""
     Write-Host "Creating trigger '$triggerName' for $functionName ($operationName)..." -ForegroundColor Yellow
