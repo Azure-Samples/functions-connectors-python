@@ -57,10 +57,10 @@ for triggerSpec in \
 do
   IFS='|' read -r functionName operationName description <<< "${triggerSpec}"
   triggerName="${connectorNamespaceConnectionName}-$(echo "${functionName}" | tr '[:upper:]' '[:lower:]')"
-  callbackUrl="https://${functionAppName}.azurewebsites.net/runtime/webhooks/connector?functionName=${functionName}&code=${connectorExtensionKey}"
+  callbackUrl="https://${functionAppName}.azurewebsites.net/runtime/webhooks/connector?functionName=${functionName}"
   notifFile="${SCRIPT_DIR}/.notification-details.${RANDOM}.${RANDOM}.json"
   _notif_files+=("$notifFile")
-  printf '{"callbackUrl":"%s"}' "$callbackUrl" > "$notifFile"
+  printf '{"callbackUrl":"%s","authentication":{"type":"QueryString","name":"code","value":"%s"}}' "$callbackUrl" "$connectorExtensionKey" > "$notifFile"
 
   echo -e "${CYAN}  Creating trigger: ${functionName} -> ${operationName}${NC}"
 
