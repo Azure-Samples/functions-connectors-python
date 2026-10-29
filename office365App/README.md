@@ -18,7 +18,7 @@ Azure Functions sample app demonstrating **Office 365 Outlook** connector trigge
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13](https://www.python.org/downloads/)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
   ```bash
@@ -47,7 +47,7 @@ azd up
 | Resource | Purpose |
 | --- | --- |
 | **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.13) | Hosts the 5 connector trigger functions |
+| **Flex Consumption Function App** (Python 3.14) | Hosts the 5 connector trigger functions |
 | **App Service Plan** (FC1) | Flex Consumption plan |
 | **User-Assigned Managed Identity** | Identity for the function app |
 | **Storage Account** | Deployment artifacts, function runtime state, and trigger payload output |
@@ -74,16 +74,19 @@ The post-deploy script configures the `OnNewEmail` trigger with these defaults:
 
 Edit `infra/scripts/postdeploy.ps1` (or `.sh`) to change folder, importance, or add trigger configs for the other functions.
 
-## Rich SDK Types
+## Rich SDK type bindings
 
 This sample uses the `azurefunctions-extensions-connectors` package which provides rich type hints:
 
 ```python
+import azure.functions as func
 import azurefunctions.extensions.connectors.office365 as office365
-from typing import List
 
+app = func.FunctionApp()
+
+@app.function_name(name="OnNewEmail")
 @app.connector_trigger(arg_name="emails")
-def on_new_email(emails: List[office365.ClientReceiveMessage]) -> None:
+def on_new_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
     for email in emails:
         print(f"Subject: {email.subject}")
         print(f"From: {email.from_}")

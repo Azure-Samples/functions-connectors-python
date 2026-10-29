@@ -231,7 +231,7 @@ module functionApp 'br/public:avm/res/web/site:0.22.0' = {
       }
       runtime: {
         name: 'python'
-        version: '3.13'
+        version: '3.14'
       }
     }
     siteConfig: {
