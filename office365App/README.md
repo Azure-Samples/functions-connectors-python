@@ -74,16 +74,9 @@ The post-deploy script configures the `OnNewEmail` trigger with these defaults:
 
 Edit `infra/scripts/postdeploy.ps1` (or `.sh`) to change folder, importance, or add trigger configs for the other functions.
 
-## Target trigger type bindings
+## Rich SDK type bindings
 
-Use `azure-functions>=2.3.0b1` and `azurefunctions-extensions-connectors>=1.0.0b4`
-for the migration shown here. This documentation update leaves the handler and dependency files unchanged.
-Import binding types from the extension, not directly from the action SDK.
-
-`OnNewEmailV3` requires `list[office365.GraphClientReceiveMessage]`, not
-`ClientReceiveMessage`. The flagged-email and mention handlers use the same Graph message type;
-the new-calendar-event and upcoming-event handlers use
-`list[office365.GraphCalendarEventClientReceive]`.
+This sample uses the `azurefunctions-extensions-connectors` package which provides rich type hints:
 
 ```python
 import azure.functions as func
@@ -98,9 +91,6 @@ def on_new_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
         print(f"Subject: {email.subject}")
         print(f"From: {email.from_}")
 ```
-
-The binding returns a list even for a single split-on email. This changes trigger payload
-handling only; it does not migrate action clients or change trigger registrations.
 
 ## Verify
 

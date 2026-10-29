@@ -56,29 +56,6 @@ After provisioning, a post-deploy hook authorizes the OneDrive connection and cr
 azd hooks run postdeploy
 ```
 
-## Target trigger type bindings
-
-Use `azure-functions>=2.3.0b1` and `azurefunctions-extensions-connectors>=1.0.0b4`.
-Both `OnOneDriveNewFile` (`OnNewFilesV2`) and `OnOneDriveUpdatedFile` (`OnUpdatedFilesV2`)
-target `list[onedriveforbusiness.BlobMetadata]`, imported from the binding extension:
-
-```python
-import azure.functions as func
-import azurefunctions.extensions.connectors.onedriveforbusiness as onedriveforbusiness
-
-app = func.FunctionApp()
-
-@app.function_name(name="OnOneDriveNewFile")
-@app.connector_trigger(arg_name="files")
-def on_onedrive_new_file(files: list[onedriveforbusiness.BlobMetadata]) -> None:
-  for file in files:
-    print(file.name, file.path, file.size, file.last_modified)
-```
-
-Use the same parameter type for the updated-file handler. Metadata uses model attributes,
-not raw JSON dictionary keys. A split-on callback still returns a one-item list.
-This documentation-only migration leaves the handler and dependency files unchanged.
-
 ## Verify
 
 After `azd up`, open the [Connector Namespaces portal](https://connectors.azure.com/) to verify:

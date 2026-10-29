@@ -7,17 +7,6 @@ Azure Functions sample app demonstrating the **Azure Blob Storage** connector tr
 | --- | --- | --- |
 | `OnAzureBlobUpdatedFile` | [`OnUpdatedFiles_V2`](https://learn.microsoft.com/en-us/connectors/azureblob/#when-a-blob-is-added-or-modified-(properties-only)-(v2)) | Fires when a blob is added or modified in the configured container |
 
-## Raw trigger payload
-
-Keep `payload: str` with `@app.connector_trigger(arg_name="payload")` and parse it with
-`json.loads(payload)` to read fields such as `Name`, `Path`, `Size`, and `LastModified`.
-The target `azurefunctions-extensions-connectors>=1.0.0b4` extension has no supported Azure Blob
-trigger type binding. A generated action SDK model does not add one; OneDrive's `BlobMetadata`
-binding is not an Azure Blob binding. Installing the extension does not change this raw contract.
-
-The documented Functions SDK minimum is `azure-functions>=2.3.0b1`. This documentation update
-does not edit the handler or dependency files.
-
 ## Prerequisites
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)

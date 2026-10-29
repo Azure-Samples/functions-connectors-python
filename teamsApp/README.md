@@ -15,39 +15,6 @@ Azure Functions sample app demonstrating the **Microsoft Teams** connector trigg
 - `OnGroupMembershipAdd`
 - `OnGroupMembershipRemoval`
 
-## Target trigger type bindings
-
-`OnNewChannelMessage` and `OnNewChannelMessageMentioningMe` target
-`list[teams.ChatMessage]`. `body` and `from_` remain dictionaries; nested sender
-data also uses dictionary keys, not object attributes.
-
-```python
-import azure.functions as func
-import azurefunctions.extensions.connectors.teams as teams
-
-app = func.FunctionApp()
-
-@app.function_name(name="OnNewChannelMessage")
-@app.connector_trigger(arg_name="messages")
-def on_new_channel_message(messages: list[teams.ChatMessage]) -> None:
-	for message in messages:
-		body = message.body or {}
-		sender = message.from_ or {}
-		user = sender.get("user") or {}
-		print(body.get("content"), user.get("displayName"))
-
-@app.function_name(name="OnGroupMembershipAdd")
-@app.connector_trigger(arg_name="members")
-def on_group_membership_add(members: list[teams.OnGroupMemberChangeResponse]) -> None:
-	for member in members:
-		print(member.get("id"))
-```
-
-`OnGroupMembershipRemoval` uses the same membership annotation. Membership items are
-dictionaries (the SDK item contract is a dictionary alias), not fixed member objects;
-only read keys present in the callback. A split-on callback still returns a one-item list.
-This documentation-only migration leaves the handler and dependency files unchanged.
-
 ## Run locally
 
 ```bash

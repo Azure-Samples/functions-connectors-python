@@ -27,7 +27,7 @@ Use the generic API when you want to:
 
 Each handler receives the raw JSON as a `str` via `@app.connector_trigger(arg_name="payload")`.
 Use `json.loads(payload)` when inspecting fields; do not annotate these generic handlers
-with connector model types. A generated action SDK model alone does not establish type-binding support.
+with connector model types.
 
 ## When to use this vs. the typed API
 
@@ -39,9 +39,6 @@ with connector model types. A generated action SDK model alone does not establis
 
 ## Prerequisites
 
-- `azure-functions>=2.3.0b1`. The typed examples in the dedicated apps target
-  `azurefunctions-extensions-connectors>=1.0.0b4`; this generic sample does not need a typed
-  binding and stays raw even if that package is installed. This documentation update does not edit dependency files.
 - [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
@@ -77,8 +74,7 @@ azd up
 This sample does **not** include infrastructure or post-deploy scripts because the
 connector and trigger configuration depends on which connector you want to use.
 Copy the `infra/` folder from one of the other apps (e.g. `office365App`) and adjust
-the connector name and trigger parameters to match your scenario. The sample infrastructure
-deploys a Flex Consumption Function App with Python 3.14; keep that runtime version when copying it.
+the connector name and trigger parameters to match your scenario.
 
 The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
 This is already configured in `host.json`.
