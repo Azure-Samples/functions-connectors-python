@@ -37,7 +37,7 @@ Provide **either** `DATAVERSE_ENVIRONMENT_NAME` (recommended — the URL is disc
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13+](https://www.python.org/downloads/)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - A Microsoft Dataverse environment and an account with access to the target table
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
@@ -72,7 +72,7 @@ azd up
 | Resource | Purpose |
 | --- | --- |
 | **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.13) | Hosts the trigger + action functions |
+| **Flex Consumption Function App** (Python 3.14) | Hosts the trigger + action functions |
 | **App Service Plan** (FC1) | Flex Consumption plan |
 | **User-Assigned Managed Identity** | Identity for the function app |
 | **Storage Account** | Deployment artifacts and function runtime state |
@@ -91,6 +91,30 @@ azd provision          # re-applies app settings + access policies
 azd hooks run postdeploy
 ```
 
+## Target trigger type binding
+
+Use `azure-functions>=2.3.0b1` and `azurefunctions-extensions-connectors>=1.0.0b4`.
+The existing `GetOnNewItems_V2` registration targets `list[commondataservice.Item]`:
+
+```python
+import azure.functions as func
+import azurefunctions.extensions.connectors.commondataservice as commondataservice
+
+app = func.FunctionApp()
+
+@app.function_name(name="OnDataverseRowChanged")
+@app.connector_trigger(arg_name="items")
+def on_dataverse_row_changed(items: list[commondataservice.Item]) -> None:
+  for item in items:
+    properties = item.dynamic_properties or {}
+    print(properties.get("accountid"), properties.get("name"))
+```
+
+`dynamic_properties` holds the row's exact column keys. `accountid` and `name` are
+account-table examples, not fixed attributes or required fields for every table.
+Keep column names and case as supplied by the connector. A split-on callback still
+returns a one-item list.
+
 ## Call the connector action (List rows)
 
 Besides *receiving* the trigger, `ListDataverseRows` *calls* the Dataverse **List rows** action
@@ -98,13 +122,19 @@ against the connection's runtime URL using the typed
 [`azure-connectors`](https://pypi.org/project/azure-connectors/) SDK:
 
 ```python
-async with CommondataserviceClient(runtime_url, token_provider=token_provider) as client:
-    payload = await client.list_records_async(entity_name=table, top="5")
+async with credential:
+  async with CommondataserviceClient(runtime_url, credential=credential) as client:
+    rows = [
+      row async for row in client.list_items(
+        dataset=environment_url, table=table, top=5
+      )
+    ]
 ```
 
-The SDK builds the List rows request and returns the parsed OData payload — no manual URL building or
-encoding. The runtime URL already identifies the environment, so the action needs only the **table**
-(entity set plural name). Its `token_provider` uses an **explicit credential per environment** (not
+Use `azure-connectors>=0.6.0b1`. The SDK builds the List rows request and returns an async pager.
+Consume every page while both the credential and client contexts remain open. Pass the Dataverse
+org URL as `dataset`, the **table** (entity set plural name), and an integer `top`.
+The client accepts an **explicit credential per environment** directly (not
 `DefaultAzureCredential`): in Azure the function app's **system-assigned managed identity** (no client
 id), and locally your `az login` identity. The environment is detected via the `IDENTITY_ENDPOINT`
 variable that Azure injects when managed identity is available.
@@ -140,9 +170,9 @@ pip install -r requirements.txt
 func start
 ```
 
-Set `COMMONDATASERVICE_CONNECTION_RUNTIME_URL` (the connection's runtime URL) and the table in
-`local.settings.json` before starting. The action itself needs only the runtime URL and table — the
-environment is identified by the connection. Locally the action
+Set `COMMONDATASERVICE_CONNECTION_RUNTIME_URL` (the connection's runtime URL),
+`DATAVERSE_ENVIRONMENT_URL` (the Dataverse org URL), and the table in
+`local.settings.json` before starting. Locally the action
 uses your signed-in `az login` (user) identity (`AzureCliCredential`). To call the action from your
 machine, grant your own identity an access policy on the connection first:
 

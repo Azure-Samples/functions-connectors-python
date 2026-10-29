@@ -12,7 +12,7 @@ Azure Functions sample app demonstrating **SharePoint Online** connector trigger
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13](https://www.python.org/downloads/)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
   ```bash
@@ -50,7 +50,7 @@ azd up
 | Resource | Purpose |
 | --- | --- |
 | **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.13) | Hosts the connector trigger functions |
+| **Flex Consumption Function App** (Python 3.14) | Hosts the connector trigger functions |
 | **App Service Plan** (FC1) | Flex Consumption plan |
 | **User-Assigned Managed Identity** | Identity for the function app |
 | **Storage Account** | Deployment artifacts and function runtime state |
@@ -64,6 +64,34 @@ After provisioning, a post-deploy hook authorizes the SharePoint connection and 
 ```bash
 azd hooks run postdeploy
 ```
+
+## Target trigger type bindings
+
+Use `azure-functions>=2.3.0b1` and `azurefunctions-extensions-connectors>=1.0.0b4`.
+Both `OnSharepointNewFile` (`GetOnNewFileItems`) and `OnSharepointUpdatedFile`
+(`GetOnUpdatedFileItems`) target `list[sharepointonline.Item]`:
+
+```python
+import azure.functions as func
+import azurefunctions.extensions.connectors.sharepointonline as sharepointonline
+
+app = func.FunctionApp()
+
+@app.function_name(name="OnSharepointNewFile")
+@app.connector_trigger(arg_name="items")
+def on_sharepoint_new_file(items: list[sharepointonline.Item]) -> None:
+  for item in items:
+    properties = item.dynamic_properties or {}
+    print(properties.get("{Name}"), properties.get("{Path}"))
+    print(properties.get("{FilenameWithExtension}"), properties.get("Modified"))
+```
+
+Use the same parameter type for the updated-file handler. `dynamic_properties` retains
+the exact wire keys, including braces and case: `{Name}`, `{Path}`,
+`{FilenameWithExtension}`, `Modified`, `ID`, and any library-specific columns that arrive.
+Do not replace them with `Name`, `Path`, `LastModified`, or guessed fixed attributes.
+A split-on callback still returns a one-item list. This documentation-only migration
+leaves the handler and dependency files unchanged.
 
 ## Verify
 
