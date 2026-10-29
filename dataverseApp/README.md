@@ -91,30 +91,6 @@ azd provision          # re-applies app settings + access policies
 azd hooks run postdeploy
 ```
 
-## Target trigger type binding
-
-Use `azure-functions>=2.3.0b1` and `azurefunctions-extensions-connectors>=1.0.0b4`.
-The existing `GetOnNewItems_V2` registration targets `list[commondataservice.Item]`:
-
-```python
-import azure.functions as func
-import azurefunctions.extensions.connectors.commondataservice as commondataservice
-
-app = func.FunctionApp()
-
-@app.function_name(name="OnDataverseRowChanged")
-@app.connector_trigger(arg_name="items")
-def on_dataverse_row_changed(items: list[commondataservice.Item]) -> None:
-  for item in items:
-    properties = item.dynamic_properties or {}
-    print(properties.get("accountid"), properties.get("name"))
-```
-
-`dynamic_properties` holds the row's exact column keys. `accountid` and `name` are
-account-table examples, not fixed attributes or required fields for every table.
-Keep column names and case as supplied by the connector. A split-on callback still
-returns a one-item list.
-
 ## Call the connector action (List rows)
 
 Besides *receiving* the trigger, `ListDataverseRows` *calls* the Dataverse **List rows** action
