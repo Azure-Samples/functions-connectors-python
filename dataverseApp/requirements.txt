@@ -1,6 +1,6 @@
-# Azure Functions dependencies
-azure-functions>=2.2.0
+azure-functions>=2.3.0b1
+azurefunctions-extensions-connectors>=1.0.0b4
 # Managed-identity auth.
 azure-identity
 # Typed Dataverse (commondataservice) connector client used by the List rows action.
-azure-connectors>=0.3.0b2
+azure-connectors>=0.6.0b1

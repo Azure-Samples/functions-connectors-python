@@ -4,8 +4,8 @@ Azure Functions sample app demonstrating the **Azure Data Explorer (Kusto)** con
 
 ## Prerequisites
 
-- **Python 3.13** or later
-- **azure-functions>=2.2.0b4** (included in requirements.txt)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
+- `azure-functions>=2.3.0b1`
 
 ## Triggers included
 
@@ -22,7 +22,7 @@ Update `local.settings.json` with your connector runtime URL and access token be
 
 ## Deploy to Azure
 
-`azd up` will provision a Flex Consumption Function App (Python 3.13), a Storage account, Application Insights,
+`azd up` will provision a Flex Consumption Function App (Python 3.14), a Storage account, Application Insights,
 and Log Analytics, then deploy the Python code.
 
 ```bash

@@ -12,7 +12,7 @@ Azure Functions sample app demonstrating **OneDrive for Business** connector tri
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13](https://www.python.org/downloads/)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
   ```bash
@@ -41,7 +41,7 @@ azd up
 | Resource | Purpose |
 | --- | --- |
 | **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.13) | Hosts the connector trigger functions |
+| **Flex Consumption Function App** (Python 3.14) | Hosts the connector trigger functions |
 | **App Service Plan** (FC1) | Flex Consumption plan |
 | **User-Assigned Managed Identity** | Identity for the function app |
 | **Storage Account** | Deployment artifacts and function runtime state |

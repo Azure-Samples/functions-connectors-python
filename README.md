@@ -2,14 +2,23 @@
 
 This repository contains Python samples that show how to use the new **Connector Namespace** integration with Azure Functions. Each sample lives in its own folder so you can clone, deploy, and explore independently with a single `azd up`.
 
+## What are Functions connectors?
+
+Azure Functions integrates with the managed connectors platform that backs Logic Apps and Power Platform, giving your functions:
+
+- **Connector triggers** — a function runs when an event occurs in an external service (new email in Office 365, file added to SharePoint or OneDrive, message posted to Microsoft Teams, and many more). The runtime exposes a `connector_trigger` binding that receives webhook callbacks from the Connector Namespace.
+- **Connector SDK actions** — function code calls connector operations through strongly-typed clients or through dynamic payload models for any connector.
+
+The connector platform handles webhook registration, OAuth flows, token refresh, and retry.
+
 > [!NOTE]
-> Connectors in Azure Functions are in **public preview**. The Connector Namespace is currently available in **West Central US (`westcentralus`)**; your function app can be deployed in any region that supports the chosen hosting plan. See the [overview](https://learn.microsoft.com/azure/azure-functions/) for details.
+> Connectors in Azure Functions are in **public preview**.
 
 ## Prerequisites
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [Python 3.13](https://www.python.org/downloads/)
+- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
 - [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
 
   ```bash
@@ -26,18 +35,12 @@ This repository contains Python samples that show how to use the new **Connector
 
 - `jq` (for bash post-deploy scripts on macOS/Linux)
 
-## What are Functions connectors?
-
-Azure Functions integrates with the managed connectors platform that backs Logic Apps and Power Platform, giving your functions:
-
-- **Connector triggers** — a function runs when an event occurs in an external service (new email in Office 365, file added to SharePoint or OneDrive, message posted to Microsoft Teams, and many more). The runtime exposes a `connector_trigger` binding that receives webhook callbacks from the Connector Namespace.
-- **Connector SDK actions** — function code calls connector operations through strongly-typed clients or through dynamic payload models for any connector.
-
-The connector platform handles webhook registration, OAuth flows, token refresh, and retry — you focus on the business logic.
 
 ## Getting-started samples
 
 Eight self-contained Azure Functions apps, each deployable with `azd up`:
+
+The included deployment templates use Python 3.14 on Flex Consumption.
 
 | App | Connector | Triggers demonstrated |
 |---|---|---|
@@ -48,52 +51,58 @@ Eight self-contained Azure Functions apps, each deployable with `azd up`:
 | [`onedriveApp/`](./onedriveApp) | OneDrive for Business | `OnOneDriveNewFile`, `OnOneDriveUpdatedFile` |
 | [`sharepointApp/`](./sharepointApp) | SharePoint Online | `OnSharepointNewFile`, `OnSharepointUpdatedFile` |
 | [`teamsApp/`](./teamsApp) | Microsoft Teams | `OnNewChannelMessage`, `OnNewChannelMessageMentioningMe`, `OnGroupMembershipAdd`, `OnGroupMembershipRemoval` |
-| [`genericApp/`](./genericApp) | _any connector_ — uses the generic `connector_trigger` API | Azure Blob, Office 365, SharePoint, Teams + a custom-type example |
+| [`genericApp/`](./genericApp) | _any connector_ — uses the generic `str` payload | Azure Blob, Office 365, SharePoint, Teams + a custom-type example |
 
 ## The packages these samples use
 
 | Package | Role |
 |---|---|
-| [`azure-functions`](https://pypi.org/project/azure-functions/) | The Functions Python worker. Provides `@app.connector_trigger` decorator and the broader bindings surface. |
-| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | Rich SDK types for Office 365 connector triggers (`ClientReceiveMessage`, `GraphClientReceiveMessage`, `GraphCalendarEventClientReceive`). Used by `office365App`. |
+| [`azure-functions>=2.3.0b1`](https://pypi.org/project/azure-functions/) | The Functions Python SDK. Provides `@app.connector_trigger` and the broader bindings surface. |
+| [`azurefunctions-extensions-connectors>=1.0.0b4`](https://pypi.org/project/azurefunctions-extensions-connectors/) | Supported connector trigger rich SDK-type bindings backed by `azure-connectors` models. |
+
 
 ## What each sample shows
 
 ### `azureblobApp` — Azure Blob
 
-A single function `OnAzureBlobUpdatedFile` that fires when blobs in a watched Azure Blob container are updated. The payload contains `Name`, `Path`, `Size`, `LastModified` fields.
+A single function `OnAzureBlobUpdatedFile` that fires when blobs in a watched Azure Blob container are updated. It keeps a raw `str` payload and parses JSON fields such as `Name`, `Path`, `Size`, and `LastModified`: the target extension has no supported Azure Blob trigger type binding.
 
 ### `dataverseApp` — Microsoft Dataverse (Common Data Service)
 
-A single function `OnDataverseRowChanged` that fires when a new row is **added** to a Dataverse table (operation `GetOnNewItems_V2`). The **environment** and **table name** are configurable via `azd env set`. Supply the environment by friendly name (`DATAVERSE_ENVIRONMENT_NAME`, auto-resolved to the org URL via Global Discovery) or explicit URL (`DATAVERSE_ENVIRONMENT_URL`), plus `DATAVERSE_TABLE_NAME` (the entity set / plural name, e.g. `accounts`). The environment URL is passed to the trigger as the `dataset` value. Note: these row triggers are Admin Only and require Global Read on the table.
+A single function `OnDataverseRowChanged` that fires when a new row is **added** to a Dataverse table (operation `GetOnNewItems_V2`). Its target binding is `list[commondataservice.Item]`; read table columns from each item's `dynamic_properties`. The **environment** and **table name** are configurable via `azd env set`. Supply the environment by friendly name (`DATAVERSE_ENVIRONMENT_NAME`, auto-resolved to the org URL via Global Discovery) or explicit URL (`DATAVERSE_ENVIRONMENT_URL`), plus `DATAVERSE_TABLE_NAME` (the entity set / plural name, e.g. `accounts`). The environment URL is passed to the trigger as the `dataset` value. Note: these row triggers are Admin Only and require Global Read on the table.
 
 ### `kustoApp` — Azure Data Explorer (Kusto)
 
-`OnKustoQueryResult` runs whenever the configured Kusto query produces a non-empty result. Each row is accessible from the parsed JSON payload.
+`OnKustoQueryResult` runs whenever the configured Kusto query produces a non-empty result. It keeps a raw `str` payload and parses the JSON rows because the target extension has no supported Kusto trigger type binding.
 
-### `office365App` — Office 365 Outlook (with rich SDK types)
+### `office365App` — Office 365 Outlook (typed trigger bindings)
 
-Five Outlook triggers using the `azurefunctions-extensions-connectors` package for rich type hints:
+Five Outlook triggers with these target bindings from `azurefunctions.extensions.connectors.office365`:
 
 | Function | Type | Fires when… |
 |---|---|---|
-| `OnNewEmail` | `List[ClientReceiveMessage]` | A new email lands in the watched mailbox / folder |
-| `OnFlaggedEmail` | `List[GraphClientReceiveMessage]` | An email is flagged (follow-up) |
-| `OnNewMentionMeEmail` | `List[GraphClientReceiveMessage]` | A new email @-mentions the connection identity |
-| `OnNewCalendarEvent` | `List[GraphCalendarEventClientReceive]` | A new calendar event is created |
-| `OnUpcomingEvent` | `List[GraphCalendarEventClientReceive]` | A calendar event is about to start |
+| `OnNewEmail` | `list[office365.GraphClientReceiveMessage]` | A new email lands in the watched mailbox / folder |
+| `OnFlaggedEmail` | `list[office365.GraphClientReceiveMessage]` | An email is flagged (follow-up) |
+| `OnNewMentionMeEmail` | `list[office365.GraphClientReceiveMessage]` | A new email @-mentions the connection identity |
+| `OnNewCalendarEvent` | `list[office365.GraphCalendarEventClientReceive]` | A new calendar event is created |
+| `OnUpcomingEvent` | `list[office365.GraphCalendarEventClientReceive]` | A calendar event is about to start |
 
 ### `onedriveApp` — OneDrive for Business
 
-`OnOneDriveNewFile` and `OnOneDriveUpdatedFile`. Both parse the payload to extract file metadata (`Name`, `Path`, `Size`, `LastModified`).
+`OnOneDriveNewFile` and `OnOneDriveUpdatedFile` both target `list[onedriveforbusiness.BlobMetadata]`.
+Read file metadata through `name`, `path`, `size`, and `last_modified` attributes.
 
 ### `sharepointApp` — SharePoint Online
 
-`OnSharepointNewFile` and `OnSharepointUpdatedFile`. Both parse the payload to extract file metadata.
+`OnSharepointNewFile` and `OnSharepointUpdatedFile` both target `list[sharepointonline.Item]`.
+Read `dynamic_properties` using exact keys such as `{Name}`, `{Path}`, `{FilenameWithExtension}`,
+and `Modified`; these are not fixed Python attributes or OneDrive metadata keys.
 
 ### `teamsApp` — Microsoft Teams
 
-Four Teams triggers:
+Four Teams triggers. The two message handlers target `list[teams.ChatMessage]`, whose `body`
+and `from_` fields remain dictionaries. Both membership handlers target
+`list[teams.OnGroupMemberChangeResponse]`; the item type is a dictionary alias, so use dictionary keys.
 
 | Function | Fires when… |
 |---|---|
@@ -104,7 +113,7 @@ Four Teams triggers:
 
 ### `genericApp` — generic `connector_trigger` API
 
-Demonstrates the generic API that works for any Azure Logic Apps connector — including connectors that do not have a first-class wrapper yet. The payload is received as a JSON string and parsed manually.
+Demonstrates the generic API that works for any Azure Logic Apps connector — including connectors that do not have a supported trigger type binding. All five handlers intentionally retain `str` payloads parsed manually, even where a typed alternative exists.
 
 | Function | Connector |
 |---|---|
@@ -114,112 +123,10 @@ Demonstrates the generic API that works for any Azure Logic Apps connector — i
 | `OnGenericTeamsChannelMessage` | Teams |
 | `OnGenericCustomConnectorEvent` | _any custom connector_ |
 
-## How a trigger function looks
-
-### With rich SDK types (Office 365)
-
-```python
-import azure.functions as func
-import azurefunctions.extensions.connectors.office365 as office365
-from typing import List
-
-app = func.FunctionApp()
-
-@app.function_name(name="OnNewEmail")
-@app.connector_trigger(arg_name="emails")
-def on_new_email(emails: List[office365.ClientReceiveMessage]) -> None:
-    for email in emails:
-        logging.info(f"Subject: '{email.subject}'.")
-        logging.info(f"From: '{email.from_}'.")
-```
-
-### Generic: string payload (any connector)
-
-```python
-import azure.functions as func
-import json
-import logging
-
-app = func.FunctionApp()
-
-@app.function_name(name="OnAzureBlobUpdatedFile")
-@app.connector_trigger(arg_name="payload")
-def on_azure_blob_updated_file(payload: str) -> None:
-    data = json.loads(payload)
-    files = data.get("body", {}).get("value", [])
-    
-    for file in files:
-        logging.info(f"Name: '{file.get('Name')}'.")
-        logging.info(f"Path: '{file.get('Path')}'.")
-```
-
-## Run a sample locally
-
-```bash
-cd <connectorAppPython>
-pip install -r requirements.txt
-func start
-```
-
-Update `local.settings.json` with the runtime URL and access token for your connector before starting. The keys differ per connector (e.g. `Office365Connection` / `OFFICE365_TOKEN`, `TeamsConnection` / `TEAMS_TOKEN`).
-
-## Deploy a sample to Azure
-
-```bash
-cd <connectorAppPython>
-azd auth login
-azd up
-```
-
-`azd up` provisions a resource group containing:
-
-- Azure Storage account (Function App backing store).
-- Flex Consumption Function App (Python 3.13) with system-assigned managed identity.
-- Application Insights + Log Analytics workspace.
-
-It then runs the `prepackage` hook (`pip install -r requirements.txt`) and deploys the Python code.
-
-After provisioning, configure the connector runtime URL and token:
-
-```bash
-azd env set CONNECTOR_RUNTIME_URL '<your-connector-runtime-url>'
-azd env set CONNECTOR_TOKEN '<your-token>'
-azd provision   # re-runs the Bicep to push the new app settings
-```
-
-## Repository layout
-
-```
-functions-connectors-python/
-├── README.md
-├── azureblobAppPython/
-├── kustoAppPython/
-├── office365AppPython/
-├── onedriveAppPython/
-├── sharepointAppPython/
-├── teamsAppPython/
-└── genericAppPython/
-```
-
-Each app folder is self-contained:
-
-```
-<connectorAppPython>/
-├── function_app.py             # Python v2 programming model entry point
-├── requirements.txt            # Python dependencies
-├── infra/
-│   ├── main.bicep              # subscription-scope: creates RG, delegates to resources.bicep
-│   ├── resources.bicep         # Storage + App Insights + Function App
-│   └── main.parameters.json    # ${AZURE_ENV_NAME}, ${AZURE_LOCATION}, ${CONNECTOR_RUNTIME_URL=}, ${CONNECTOR_TOKEN=}
-├── azure.yaml                  # azd service definition + prepackage hook
-├── host.json                   # Preview extension bundle + logging
-├── local.settings.json         # placeholders for runtime URL + token
-└── README.md
-```
 
 ## Related repos
 
 | Repo | Purpose |
 |---|---|
-| [Azure/connectors-python-SDK](https://github.com/Azure/connectors-python-SDK) | `azure-connectors` — generated Python SDK for Azure Connectors. |
+| [Azure/connectors-python-SDK](https://github.com/Azure/connectors-python-SDK) | `azure-connectors` — Python SDK for Azure Connectors. |
 | [Azure/azure-functions-python-extensions](https://github.com/Azure/azure-functions-python-extensions) | `azurefunctions-extensions-connectors` — the binding extension consumed by these samples. |
