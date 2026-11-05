@@ -1,0 +1,2 @@
+azure-functions>=2.4.0b1 ; python_version >= '3.13'
+azure-functions>=1.27.0b1 ; python_version < '3.13'

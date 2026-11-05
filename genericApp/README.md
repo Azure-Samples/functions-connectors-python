@@ -1,91 +1,27 @@
-# Generic Connector Triggers (Python — untyped)
+# Generic connector triggers (Python)
 
-Azure Functions sample demonstrating the **generic (untyped) connector trigger binding**
-with raw `str` payloads instead of typed trigger bindings. All five handlers intentionally
-remain raw, including Office 365, SharePoint, and Teams where typed alternatives exist.
+Choose the standalone [polling app](./polling/README.md) or
+[webhook app](./webhook/README.md). These mirror the
+[.NET Generic reference](https://github.com/Azure-Samples/functions-connectors-net/pull/12).
 
-Use the generic API when you want to:
+| App | Functions |
+| --- | --- |
+| Polling | One connector-neutral `OnGenericConnectorEvent` |
+| Webhook | Five existing illustrative functions for Office 365, Azure Blob, SharePoint, Teams, and custom connectors |
 
-- Bind a trigger for an operation that does **not** have a supported trigger type binding.
-- Forward the payload as-is (e.g. to a queue, blob, or AI model) without deserializing.
-- Keep a minimal dependency footprint.
-- Work with any Azure Logic Apps connector.
+All handlers receive raw `str` payloads and log only their trigger names. They do
+not parse payloads, infer item counts, or log event contents. No connector SDK or
+rich binding extension package is required for these raw-string bindings.
 
-> The function **name** still binds to the connector + operation on the host side. The
-> generic API only changes the parameter type — it does **not** change which
-> operation the function listens to.
+**These apps do not provision Azure resources.** Use existing authorized Connector
+Namespace connections and trigger configurations. There are no `azd up` or postdeploy
+hooks. Function names route webhook callbacks; names alone do not subscribe to a
+connector operation. Configure the operation and its parameters in the namespace.
 
-## Triggers included
+Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions
+require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
+Each requirements file uses Python-version markers. Both apps use the Preview
+Functions extension bundle and include safe local settings examples.
 
-| Function | Connector | Description |
-|---|---|---|
-| `OnGenericOffice365NewEmail` | Office 365 | Fires on new email — raw JSON payload |
-| `OnGenericAzureBlobUpdated` | Azure Blob | Fires on blob add/modify — raw JSON payload |
-| `OnGenericSharepointNewFile` | SharePoint Online | Fires on new file — raw JSON payload |
-| `OnGenericTeamsChannelMessage` | Teams | Fires on channel message — raw JSON payload |
-| `OnGenericCustomConnectorEvent` | _any connector_ | Placeholder for custom connectors — raw JSON payload |
-
-Each handler receives the raw JSON as a `str` via `@app.connector_trigger(arg_name="payload")`.
-Use `json.loads(payload)` when inspecting fields; do not annotate these generic handlers
-with connector model types.
-
-## When to use this vs. the typed API
-
-| Use case | Approach |
-|---|---|
-| Operation with a supported trigger type binding (e.g. the Outlook or Teams examples) | Use the extension binding type in the dedicated app |
-| Operation without a supported trigger type binding | Use `connector_trigger` with a raw `str` payload |
-| Forward payload as-is, or demonstrate the generic API even when a typed alternative exists | Keep `connector_trigger` with a raw `str` payload (this sample) |
-
-## Prerequisites
-
-- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
-- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
-- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors)
-
-  ```powershell
-  # PowerShell
-  irm https://aka.ms/connector-namespace-cli-install-ps | iex
-  ```
-
-  ```bash
-  # Bash
-  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
-  ```
-
-## Run locally
-
-```bash
-pip install -r requirements.txt
-func start
-```
-
-Update `local.settings.json` with the runtime URL and token for each connection you want to trigger on.
-
-## Deploy
-
-```bash
-azd auth login
-cd genericApp
-azd up
-```
-
-This sample does **not** include infrastructure or post-deploy scripts because the
-connector and trigger configuration depends on which connector you want to use.
-Copy the `infra/` folder from one of the other apps (e.g. `office365App`) and adjust
-the connector name and trigger parameters to match your scenario.
-
-The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
-This is already configured in `host.json`.
-
-## Project layout
-
-```text
-genericApp/
-├── function_app.py           # All generic trigger functions (string payload)
-├── requirements.txt          # Python dependencies
-├── host.json
-├── azure.yaml
-└── local.settings.json
-```
+Follow the [connector configuration guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md)
+and the selected app's README for identity, endpoint, and callback setup.
