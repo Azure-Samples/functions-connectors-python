@@ -1,0 +1,52 @@
+[
+  {
+    "functionName": "WebhookChatMessageTrigger",
+    "parameters": []
+  },
+  {
+    "functionName": "WebhookNewMessageTrigger",
+    "parameters": [
+      { "name": "threadType", "value": "<connector message-type value>" },
+      { "name": "requestBody", "value": "<connector-generated chat/channel scope>" }
+    ]
+  },
+  {
+    "functionName": "WebhookAtMentionTrigger",
+    "parameters": [
+      { "name": "threadType", "value": "<connector message-type value>" },
+      { "name": "requestBody", "value": "<connector-generated chat/channel scope>" }
+    ]
+  },
+  {
+    "functionName": "WebhookKeywordTrigger",
+    "parameters": [
+      { "name": "threadType", "value": "<connector message-type value>" },
+      { "name": "$search", "value": "<comma-separated keywords>" },
+      { "name": "requestBody", "value": "<connector-generated chat/channel scope>" }
+    ]
+  },
+  {
+    "functionName": "WebhookMessageReactionTrigger",
+    "parameters": [
+      { "name": "reactionKey", "value": "<connector emoji value>" },
+      { "name": "frequency", "value": "<connector trigger-frequency value>" },
+      { "name": "runningPolicy", "value": "<connector who-can-trigger value>" },
+      { "name": "threadType", "value": "<connector message-type value>" },
+      { "name": "requestBody", "value": "<connector-generated chat/channel scope>" }
+    ]
+  },
+  {
+    "functionName": "RecordingTrigger",
+    "parameters": [
+      { "name": "scopeType", "value": "<connector recording scope value>" },
+      { "name": "body", "value": "<connector-generated recording scope body>" }
+    ]
+  },
+  {
+    "functionName": "TranscriptTrigger",
+    "parameters": [
+      { "name": "scopeType", "value": "<connector transcript scope value>" },
+      { "name": "body", "value": "<connector-generated transcript scope body>" }
+    ]
+  }
+]

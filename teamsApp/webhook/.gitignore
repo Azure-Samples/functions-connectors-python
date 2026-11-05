@@ -1,0 +1,9 @@
+.azure/
+.venv/
+__pycache__/
+*.py[cod]
+local.settings.json
+.local-settings-*.tmp
+.local-settings-*.json
+.trigger-parameters-*.json
+.notification-details-*.json

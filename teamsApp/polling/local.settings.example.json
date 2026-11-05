@@ -1,0 +1,27 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "ConnectorNamespace__pollingEndpoint": "<service-provided connector polling endpoint>",
+    "OnNewChannelMessageTriggerConfigName": "teams-onnewchannelmessage",
+    "OnNewChannelMessageMentioningMeTriggerConfigName": "teams-onnewchannelmessagementioningme",
+    "OnGroupMembershipAddTriggerConfigName": "teams-ongroupmembershipadd",
+    "OnGroupMembershipRemovalTriggerConfigName": "teams-ongroupmembershipremoval",
+    "WebhookChatMessageTriggerTriggerConfigName": "teams-webhookchatmessagetrigger",
+    "WebhookNewMessageTriggerTriggerConfigName": "teams-webhooknewmessagetrigger",
+    "WebhookAtMentionTriggerTriggerConfigName": "teams-webhookatmentiontrigger",
+    "WebhookKeywordTriggerTriggerConfigName": "teams-webhookkeywordtrigger",
+    "WebhookMessageReactionTriggerTriggerConfigName": "teams-webhookmessagereactiontrigger",
+    "RecordingTriggerTriggerConfigName": "teams-recordingtrigger",
+    "TranscriptTriggerTriggerConfigName": "teams-transcripttrigger",
+    "AzureWebJobs.WebhookChatMessageTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookNewMessageTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookAtMentionTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookKeywordTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookMessageReactionTrigger.Disabled": "true",
+    "AzureWebJobs.RecordingTrigger.Disabled": "true",
+    "AzureWebJobs.TranscriptTrigger.Disabled": "true"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "AzureWebJobs.WebhookChatMessageTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookNewMessageTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookAtMentionTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookKeywordTrigger.Disabled": "true",
+    "AzureWebJobs.WebhookMessageReactionTrigger.Disabled": "true",
+    "AzureWebJobs.RecordingTrigger.Disabled": "true",
+    "AzureWebJobs.TranscriptTrigger.Disabled": "true"
+  }
+}
