@@ -1,75 +1,46 @@
-# OneDrive for Business Triggers (Python)
+# OneDrive for Business connector triggers (Python)
 
-Azure Functions sample app demonstrating **OneDrive for Business** connector triggers using the
-`azurefunctions-extensions-connectors` package with the Functions connector trigger extension.
+Choose a standalone [polling app](./polling/README.md) or
+[webhook app](./webhook/README.md). Both cover the four .NET reference scenarios:
 
-| Function | Connector operation | Description |
+| Function | Connector operation | Binding |
 | --- | --- | --- |
-| `OnOneDriveNewFile` | [`OnNewFilesV2`](https://learn.microsoft.com/en-us/connectors/onedriveforbusiness/#when-a-file-is-created) | Fires when a new file is created in OneDrive |
-| `OnOneDriveUpdatedFile` | [`OnUpdatedFilesV2`](https://learn.microsoft.com/en-us/connectors/onedriveforbusiness/#when-a-file-is-modified-(properties-only)) | Fires when a file is modified in OneDrive |
+| `OnOneDriveNewFileContent` | `OnNewFileV2` | `str` (file content) |
+| `OnOneDriveUpdatedFileContent` | `OnUpdatedFileV2` | `str` (file content) |
+| `OnOneDriveNewFile` | `OnNewFilesV2` | `list[onedrive.BlobMetadata]` |
+| `OnOneDriveUpdatedFile` | `OnUpdatedFilesV2` | `list[onedrive.BlobMetadata]` |
 
-## Prerequisites
+Both apps use the same type annotations and handler bodies. Polling adds only
+`delivery_mode=func.DeliveryMode.POLL` and
+`trigger_config_name="%<FunctionName>TriggerConfigName%"` to the decorators.
+Both use `connection="ConnectorNamespace"`. Metadata handlers log file properties;
+content handlers log only the trigger name, never the received file content.
+Content operations use raw `str` bindings because the Python extension has no
+corresponding content-payload models. The Python names keep the `OnOneDrive`
+prefix; each maps to the same connector operation as its .NET counterpart.
 
-- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
-- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
+Each app includes its own infrastructure, dependencies, hooks, and local settings
+example. Run `azd up` from the chosen folder, using different environment names
+if you deploy both. Poll delivery needs no public callback; webhook delivery uses
+the connector callback authenticated with the connector extension system key.
 
-  ```bash
-  # Bash
-  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
-  ```
+## Python requirements
 
-  or
+| Python | Minimum Functions SDK | Required setting |
+| --- | --- | --- |
+| 3.13+ | `azure-functions>=2.4.0b1` | None |
+| 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-  ```pwsh
-  # PowerShell
-  irm https://aka.ms/connector-namespace-cli-install-ps | iex
-  ```
+Both requirement files use Python-version markers and require
+`azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14 and
+includes isolation settings, as do the local examples.
 
-## Deploy to Azure
+Use a **connector folder ID**, not a display name, path, or a guessed encoding.
+Set `ONEDRIVE_FOLDER_ID=root` explicitly to monitor the root folder. The webhook
+hook can browse an authorized connection and save a selected folder ID for reuse.
 
-```bash
-cd onedriveApp
-azd auth login
-az login
-azd up
-```
+> [!CAUTION]
+> These handlers log file names, paths, sizes, and modification times. Use a test
+> folder, restrict log access, and delete resources with `azd down --purge` when done.
 
-### Resources provisioned
-
-| Resource | Purpose |
-| --- | --- |
-| **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.14) | Hosts the connector trigger functions |
-| **App Service Plan** (FC1) | Flex Consumption plan |
-| **User-Assigned Managed Identity** | Identity for the function app |
-| **Storage Account** | Deployment artifacts and function runtime state |
-| **Log Analytics Workspace** | Backing store for Application Insights |
-| **Application Insights** | Telemetry and logging |
-| **Connector Namespace** | Hosts the OneDrive connection and trigger configs |
-| **OneDrive for Business Connection** (OAuth) | Authenticates to OneDrive — requires interactive consent during post-deploy |
-
-After provisioning, a post-deploy hook authorizes the OneDrive connection and creates trigger configs. To re-run:
-
-```bash
-azd hooks run postdeploy
-```
-
-## Verify
-
-After `azd up`, open the [Connector Namespaces portal](https://connectors.azure.com/) to verify:
-
-- One **Connection** (OneDrive for Business) with status **Connected**
-- Trigger configs in **Enabled** state
-
-Create or modify a file in OneDrive to fire the trigger. Tail logs with:
-
-```bash
-az functionapp log tail -g <resourceGroupName> -n <functionAppName>
-```
-
-## More
-
-- [Operations to Functions Signature Mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md)
-- [OneDrive for Business connector reference](https://learn.microsoft.com/en-us/connectors/onedriveforbusiness/)
+See the [OneDrive for Business connector reference](https://learn.microsoft.com/connectors/onedriveforbusiness/).

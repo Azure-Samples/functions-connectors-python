@@ -1,111 +1,38 @@
-# Azure Blob Storage Trigger (Python)
+# Azure Blob connector triggers (Python)
 
-Azure Functions sample app demonstrating the **Azure Blob Storage** connector trigger using the
-[azure-functions](https://pypi.org/project/azure-functions/) SDK with the connector trigger decorator.
+Choose a standalone [polling app](./polling/README.md) or
+[webhook app](./webhook/README.md). Both run `OnAzureBlobUpdatedFile` for the
+Azure Blob connector's `OnUpdatedFiles_V2` operation when a blob is added or modified.
+This is the **Connector Namespace** integration, not the native Storage BlobTrigger.
 
-| Function | Connector operation | Description |
-| --- | --- | --- |
-| `OnAzureBlobUpdatedFile` | [`OnUpdatedFiles_V2`](https://learn.microsoft.com/en-us/connectors/azureblob/#when-a-blob-is-added-or-modified-(properties-only)-(v2)) | Fires when a blob is added or modified in the configured container |
+Both apps use the same raw `str` payload, metadata parser, and handler. The Python
+connector binding extension has no supported Azure Blob SDK model binding.
+Polling adds only `delivery_mode=func.DeliveryMode.POLL` and
+`trigger_config_name="%OnAzureBlobUpdatedFileTriggerConfigName%"` to the decorator.
+Both use `connection="ConnectorNamespace"`.
 
-## Prerequisites
+Each folder includes its own infrastructure, dependencies, hooks, and local
+settings example. Run `azd up` from the chosen folder. Use different azd environment
+names if you deploy both, so they do not overwrite resources.
 
-- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
-- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
-
-  ```bash
-  # Bash
-  curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
-  ```
-
-  or
-
-  ```pwsh
-  # PowerShell
-  irm https://aka.ms/connector-namespace-cli-install-ps | iex
-  ```
-
-## Deploy to Azure
-
-```bash
-cd azureblobApp
-azd auth login
-az login
-azd up
-```
-
-### Resources provisioned
-
-| Resource | Purpose |
+| Delivery | How it receives events |
 | --- | --- |
-| **Resource Group** | Contains all resources |
-| **Flex Consumption Function App** (Python 3.14) | Hosts the connector trigger function |
-| **App Service Plan** (FC1) | Flex Consumption plan |
-| **User-Assigned Managed Identity** | Identity for the function app |
-| **Storage Account** (function app) | Deployment artifacts and function runtime state |
-| **Storage Account** (monitored) | Blob storage monitored by the trigger, with a `connector-input` container |
-| **Log Analytics Workspace** | Backing store for Application Insights |
-| **Application Insights** | Telemetry and logging |
-| **Connector Namespace** | Hosts the Azure Blob connection and trigger config |
-| **Azure Blob Connection** (Managed Identity auth) | Connects to the monitored storage account using the Connector Namespace's system MI |
-| **Storage Blob Data Reader** role assignment | Grants the Connector Namespace MI read access to the monitored storage account |
+| Polling | The host receives and acknowledges events through the namespace endpoint using Microsoft Entra credentials; no public callback is needed. |
+| Webhook | The namespace sends events to the Functions connector callback, authenticated with the connector extension system key. |
 
-The Azure Blob connection uses **Managed Identity** authentication — no storage keys or OAuth consent required. The connection is immediately `Ready` after provisioning.
+## Python requirements
 
-After provisioning, a post-deploy hook creates the trigger config pointing at the function app's connector webhook URL. To re-run only the trigger setup:
+| Python | Minimum Functions SDK | Required app setting |
+| --- | --- | --- |
+| 3.13+ | `azure-functions>=2.4.0b1` | None |
+| 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-```bash
-azd hooks run postdeploy
-```
+Both requirements files select the SDK through Python-version markers and retain
+`azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14;
+the templates and local examples include worker isolation for older runtimes.
 
-## Run locally
+> [!CAUTION]
+> The handlers log blob names, paths, sizes, and modification times. Use test data,
+> restrict log access, and run `azd down --purge` from the app folder when finished.
 
-```bash
-pip install -r requirements.txt
-func start
-```
-
-Update `local.settings.json` with your connector runtime URL and access token before starting.
-
-The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
-This is already configured in `host.json`.
-
-## Verify
-
-After `azd up`, open the [Connector Namespaces portal](https://connectors.azure.com/) to verify:
-
-- One **Connection** (Azure Blob) with status **Ready**
-- One **Trigger** (`OnUpdatedFiles_V2`) in **Enabled** state
-
-Upload a file to the `connector-input` container to fire the trigger. Tail logs with:
-
-```bash
-az functionapp log tail -g <resourceGroupName> -n <functionAppName>
-```
-
-## Project layout
-
-```
-azureblobApp/
-├── function_app.py           # Python v2 programming model entry point
-├── requirements.txt          # Python dependencies
-├── infra/
-│   ├── main.bicep            # azd entrypoint (subscription scope)
-│   ├── connectorNamespace.bicep  # Connector Namespace + Azure Blob connection
-│   ├── abbreviations.json    # Resource naming conventions
-│   ├── main.parameters.json
-│   └── scripts/
-│       ├── postdeploy.ps1    # Post-deploy trigger setup (Windows)
-│       └── postdeploy.sh     # Post-deploy trigger setup (Linux/macOS)
-├── .func/
-│   └── config.json           # Functions tooling configuration
-├── azure.yaml
-├── host.json
-└── local.settings.json
-```
-
-## More
-
-- [Operations to Functions Signature Mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md)
-- [Azure Blob connector reference](https://learn.microsoft.com/en-us/connectors/azureblob/)
+See the [Azure Blob connector reference](https://learn.microsoft.com/connectors/azureblob/).
