@@ -8,10 +8,6 @@ param enableSeparateRowTriggers bool = false
 @minLength(1)
 param entitySetName string = 'accounts'
 param enableActionTrigger bool = false
-param eventCatalog string = ''
-param eventCategory string = ''
-param eventTable string = ''
-param eventAction string = ''
 
 var organization = endsWith(environmentUrl, '/') ? substring(environmentUrl, 0, length(environmentUrl) - 1) : environmentUrl
 var destination = {
@@ -47,27 +43,6 @@ resource rowTrigger 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-p
     state: 'Enabled'
     type: 'NotSpecified'
     description: 'Current Dataverse added, modified, or deleted operation with Poll delivery.'
-  }
-}
-
-resource actionTrigger 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = if (enableActionTrigger) {
-  parent: connectorNamespace
-  name: 'dataverse-ondataverseactionperformed'
-  properties: {
-    connectionDetails: { connectionName: connectionName, connectorName: 'commondataservice' }
-    deliveryMode: 'Poll'
-    operationName: 'BusinessEventsTrigger'
-    metadata: union(destination, { functionName: 'OnDataverseActionPerformed' })
-    parameters: [
-      { name: 'organization', value: organization }
-      { name: 'catalog', value: eventCatalog }
-      { name: 'category', value: eventCategory }
-      { name: 'entityname', value: eventTable }
-      { name: 'sdkmessagename', value: eventAction }
-    ]
-    state: 'Enabled'
-    type: 'NotSpecified'
-    description: 'Current Dataverse action-performed operation with Poll delivery.'
   }
 }
 

@@ -76,7 +76,12 @@ Set all values before `azd up`:
 | `DATAVERSE_EVENT_ACTION` | Actual SDK message name |
 
 Do not use placeholder selector values. Action-performed is disabled by default
-both in the Functions app and its source configuration. Set the enable flag to
+in the Functions app; no action configuration is created until enabled. The
+postdeploy hook checks ownership and the cleanup journal before creating the
+action configuration. Bicep does not create or update it. Reruns preserve matching
+registrations and reject changed selectors before writing to the configuration.
+Complete the source-cleanup steps below before replacing an action registration.
+Set the enable flag to
 `false` and rerun `azd up` to disable it. Incremental Bicep retains omitted configs;
 the hook changes only the state of owned optional Poll configs. It retains the full
 properties, selector values, metadata, and Poll delivery, then verifies state readback.
