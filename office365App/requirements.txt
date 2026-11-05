@@ -1,2 +1,0 @@
-azure-functions>=2.3.0b1
-azurefunctions-extensions-connectors>=1.0.0b4

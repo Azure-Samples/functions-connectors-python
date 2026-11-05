@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "mailFolderPath": { "value": "${OFFICE365_MAIL_FOLDER=Inbox}" },
+    "calendarId": { "value": "${OFFICE365_CALENDAR_ID=Calendar}" },
+    "sharedMailboxAddress": { "value": "${OFFICE365_SHARED_MAILBOX_ADDRESS=}" },
+    "sharedMailboxFolderId": { "value": "${OFFICE365_SHARED_MAILBOX_FOLDER_ID=Inbox}" },
+    "applicationInsightsLocation": { "value": "${APPLICATION_INSIGHTS_LOCATION=}" },
+    "enableTriggers": { "value": "${OFFICE365_ENABLE_TRIGGERS=true}" },
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "connectorNamespaceLocation": {
+      "value": "${CONNECTOR_NAMESPACE_LOCATION=westcentralus}"
+    },
+    "userPrincipalId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    }
+  }
+}

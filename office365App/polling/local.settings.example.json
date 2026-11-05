@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "OnCalendarUpdatedItemsTriggerConfigName": "office365-oncalendarupdateditems",
+    "OnSharedMailboxNewEmailTriggerConfigName": "office365-onsharedmailboxnewemail",
+    "AzureWebJobs.OnSharedMailboxNewEmail.Disabled": "true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "ConnectorNamespace__pollingEndpoint": "<connectorPollingEndpoint-from-azd-outputs>",
+    "OnNewEmailTriggerConfigName": "office365-onnewemail",
+    "OnFlaggedEmailTriggerConfigName": "office365-onflaggedemail",
+    "OnNewMentionMeEmailTriggerConfigName": "office365-onnewmentionmeemail",
+    "OnNewCalendarEventTriggerConfigName": "office365-onnewcalendarevent",
+    "OnUpcomingEventTriggerConfigName": "office365-onupcomingevent"
+  }
+}
