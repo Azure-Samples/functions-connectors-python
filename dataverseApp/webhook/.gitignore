@@ -1,0 +1,8 @@
+.azure/
+local.settings.json
+.venv/
+__pycache__/
+*.py[cod]
+infra/main.json
+.notification-details*.json
+.local-settings-*.json

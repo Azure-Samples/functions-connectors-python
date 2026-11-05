@@ -1,0 +1,8 @@
+{
+  "stack": {
+    "runtime": "python",
+    "language": "python"
+  },
+  "profiles": ["flex"],
+  "defaultProfile": "flex"
+}

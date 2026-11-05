@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "AzureWebJobs.OnDataverseActionPerformed.Disabled": "true",
+    "AzureWebJobs.OnDataverseRowAdded.Disabled": "true",
+    "AzureWebJobs.OnDataverseRowModified.Disabled": "true",
+    "AzureWebJobs.OnDataverseRowDeleted.Disabled": "true"
+  }
+}

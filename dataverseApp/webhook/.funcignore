@@ -1,0 +1,16 @@
+.git*
+.azure
+.vscode
+.venv
+venv
+__pycache__
+*.py[cod]
+infra
+README.md
+local.settings*.json
+.notification-details*.json
+.local-settings-*.json
+__azurite_db*
+__blobstorage__
+__queuestorage__
+.azurite*
