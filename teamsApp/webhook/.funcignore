@@ -1,0 +1,14 @@
+.git*
+.azure
+.venv
+__pycache__
+*.py[cod]
+local.settings*.json
+.local-settings-*.json
+.local-settings-*.tmp
+.trigger-parameters-*.json
+.notification-details-*.json
+infra
+azure.yaml
+.func
+tests

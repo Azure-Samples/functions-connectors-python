@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: functions-connectors-python-teams-polling
+services:
+  function-app:
+    host: function
+    project: .
+    language: python
+hooks:
+  preprovision:
+    shell: pwsh
+    run: ./infra/scripts/validate-triggers.ps1
+    continueOnError: false
+  postdeploy:
+    shell: pwsh
+    run: ./infra/scripts/postdeploy.ps1
+    interactive: true
+    continueOnError: false
