@@ -1,4 +1,8 @@
-connector_jq() { command jq --binary "$@"; }
+connector_jq() (
+    set -o pipefail
+    # Normalize native Windows jq line endings without requiring --binary.
+    command jq "$@" | sed $'s/\r$//'
+)
 
 write_local_settings() (
     set -euo pipefail
