@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "connectorNamespaceLocation": {
+      "value": "${CONNECTOR_NAMESPACE_LOCATION=westcentralus}"
+    },
+    "userPrincipalId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    },
+    "sharepointSiteUrl": {
+      "value": "${SHAREPOINT_SITE_URL}"
+    },
+    "sharepointLibraryName": {
+      "value": "${SHAREPOINT_LIBRARY_NAME=Documents}"
+    },
+    "sharepointFolderPath": {"value": "${SHAREPOINT_FOLDER_PATH=}"},
+    "sharepointListName": {"value": "${SHAREPOINT_LIST_NAME=}"},
+    "sharepointEnableDeletionTriggers": {"value": "${SHAREPOINT_ENABLE_DELETION_TRIGGERS=false}"},
+    "sharepointEnableSyntexTrigger": {"value": "${SHAREPOINT_ENABLE_SYNTEX_TRIGGER=false}"},
+    "sharepointFormId": {"value": "${SHAREPOINT_FORM_ID=}"},
+    "sharepointDigestSchedule": {"value": "${SHAREPOINT_DIGEST_SCHEDULE=}"}
+  }
+}

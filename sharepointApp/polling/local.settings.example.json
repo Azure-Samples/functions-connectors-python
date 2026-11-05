@@ -1,0 +1,29 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "ConnectorNamespace__pollingEndpoint": "<connectorPollingEndpoint-from-azd-outputs>",
+    "OnSharepointNewFileTriggerConfigName": "sharepoint-onsharepointnewfile",
+    "OnSharepointUpdatedFileTriggerConfigName": "sharepoint-onsharepointupdatedfile",
+    "OnSharepointNewItemTriggerConfigName": "sharepoint-onsharepointnewitem",
+    "OnSharepointUpdatedItemTriggerConfigName": "sharepoint-onsharepointupdateditem",
+    "OnSharepointChangedItemTriggerConfigName": "sharepoint-onsharepointchangeditem",
+    "OnSharepointDeletedItemTriggerConfigName": "sharepoint-onsharepointdeleteditem",
+    "OnSharepointDeletedFileTriggerConfigName": "sharepoint-onsharepointdeletedfile",
+    "OnSharepointFormSubmittedTriggerConfigName": "sharepoint-onsharepointformsubmitted",
+    "OnSharepointFileClassifiedTriggerConfigName": "sharepoint-onsharepointfileclassified",
+    "OnSharepointRecurringDigestTriggerConfigName": "sharepoint-onsharepointrecurringdigest",
+    "AzureWebJobs.OnSharepointNewFile.Disabled": "false",
+    "AzureWebJobs.OnSharepointUpdatedFile.Disabled": "false",
+    "AzureWebJobs.OnSharepointNewItem.Disabled": "false",
+    "AzureWebJobs.OnSharepointUpdatedItem.Disabled": "false",
+    "AzureWebJobs.OnSharepointChangedItem.Disabled": "false",
+    "AzureWebJobs.OnSharepointDeletedItem.Disabled": "true",
+    "AzureWebJobs.OnSharepointDeletedFile.Disabled": "true",
+    "AzureWebJobs.OnSharepointFormSubmitted.Disabled": "true",
+    "AzureWebJobs.OnSharepointFileClassified.Disabled": "true",
+    "AzureWebJobs.OnSharepointRecurringDigest.Disabled": "true"
+  }
+}

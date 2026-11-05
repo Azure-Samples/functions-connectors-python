@@ -1,0 +1,12 @@
+[
+  {"functionName":"OnSharepointNewFile","operationName":"GetOnNewFileItems","description":"When a file is created (properties only)","target":"library","folder":true,"group":"standard"},
+  {"functionName":"OnSharepointUpdatedFile","operationName":"GetOnUpdatedFileItems","description":"When a file is created or modified (properties only)","target":"library","folder":true,"group":"standard"},
+  {"functionName":"OnSharepointNewItem","operationName":"GetOnNewItems","description":"When an item is created","target":"list","folder":false,"group":"standard"},
+  {"functionName":"OnSharepointUpdatedItem","operationName":"GetOnUpdatedItems","description":"When an item is created or modified","target":"list","folder":false,"group":"standard"},
+  {"functionName":"OnSharepointChangedItem","operationName":"GetOnChangedItems","description":"When an item or a file is modified","target":"list","folder":false,"group":"standard"},
+  {"functionName":"OnSharepointDeletedItem","operationName":"GetOnDeletedItems","description":"When an item is deleted","target":"list","folder":false,"group":"deletion"},
+  {"functionName":"OnSharepointDeletedFile","operationName":"GetOnDeletedFileItems","description":"When a file is deleted","target":"library","folder":true,"group":"deletion"},
+  {"functionName":"OnSharepointFormSubmitted","operationName":"GetOnNewItemsFromForm","description":"When a form is submitted (preview)","target":"list","folder":false,"group":"form"},
+  {"functionName":"OnSharepointFileClassified","operationName":"GetOnUpdatedFileClassifiedTimes","description":"When a file is classified by a Microsoft Syntex model","target":"library","folder":true,"group":"syntex"},
+  {"functionName":"OnSharepointRecurringDigest","operationName":"GetOnRecurrenceDigest","description":"Recurring digest of updates (preview)","target":"library","folder":true,"group":"digest"}
+]

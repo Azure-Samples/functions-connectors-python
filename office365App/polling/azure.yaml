@@ -1,0 +1,16 @@
+name: azure-functions-m365-email-python-polling
+metadata:
+  template: azure-functions-m365-email-python-polling@0.0.1-alpha
+hooks:
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

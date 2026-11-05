@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: functions-connectors-python-sharepoint-polling
+metadata:
+  template: functions-connectors-python-sharepoint-polling@0.0.1-alpha
+services:
+  function-app:
+    host: function
+    project: .
+    language: python
+hooks:
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: bash
+      run: ./infra/scripts/postdeploy.sh
+    interactive: true
+    continueOnError: false
