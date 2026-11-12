@@ -43,18 +43,37 @@ azd up
 
 Use a different environment name from polling. Deployment creates a Python 3.14
 Linux Flex Consumption app, system-assigned managed identity, host storage, monitoring, a separate
-monitored storage account and container, a Connector Namespace, and an OAuth Blob
+monitored storage account and container, a Connector Namespace, and a managed-identity Blob
 connection. The container defaults to `connector-input`.
 
 Set `APPLICATIONINSIGHTS_LOCATION` to a supported region before provisioning if
 the app region does not offer Application Insights. An empty value uses the app region.
 
-The monitored storage account disables shared-key access. The deploying developer
-gets Storage Blob Data Contributor access for uploads. Authorize the OAuth
-connection with this same user, or grant the consenting user source-storage data
-access separately. Allow time for role assignments to take effect.
+The monitored storage account disables shared-key access. The namespace's
+system-assigned identity gets Storage Blob Data Reader on the monitored container
+to read blobs and detect changes. The deploying developer retains Storage Blob Data
+Contributor access on the separate monitored account for test uploads and a
+developer connection access policy. A namespace connection access policy allows
+the namespace identity to use the connection. The Function App keeps its existing
+host-storage and monitoring grants; it receives no source-storage grant.
+The `connectorNamespacePrincipalId` output identifies the source reader.
+No OAuth consent is needed. Allow time for role assignments to take effect.
 
-The post-deploy hook authorizes the connection and creates or updates the enabled Webhook trigger.
+Reprovisioning an existing environment creates a separate connection whose deterministic
+name ends in `-mi`. An OAuth connection cannot migrate to managed identity. Rerunning
+the hook alone does not migrate authentication. Incremental deployment preserves the
+old OAuth connection and its webhook trigger. After confirming
+delivery through the new connection, disable or remove the old trigger to avoid duplicate
+events. Remove the old connection only after checking that no other clients use it.
+The deployment outputs and new webhook trigger use the MI connection.
+
+The noninteractive post-deploy hook reads the full connection configuration on each
+attempt and requires `parameterValueSet.name=managedIdentityAuth` before accepting
+Connected or Ready. It makes at most 100 status reads separated by three seconds and
+fails on Error, a failed status read, or timeout without opening OAuth consent.
+Verify the namespace connection access policy and container Reader grant, allow RBAC
+propagation, then rerun. Readiness does not prove event delivery; upload and overwrite
+a test blob and check logs. Once ready, the hook creates or updates the enabled Webhook trigger.
 It passes the monitored account as `dataset` and base64 of `%2f<container>` as
 `folderId`. Callback authentication uses the connector extension system key, not
 an ordinary function key. Temporary callback-authentication files are cleaned up.
@@ -80,7 +99,7 @@ sample if you do not want a public tunnel.
 
 ## Verify and clean up
 
-Check the connection is Connected and the trigger Enabled in
+Check the connection is Connected or Ready and the trigger Enabled in
 [Connector Namespaces](https://connectors.azure.com/). Upload and overwrite a test
 blob in the storage account and container shown in azd outputs. Use Microsoft Entra
 authentication, not an account key. Allow time for the connector to detect changes,

@@ -39,19 +39,21 @@ azd up
 Use a different environment name from webhook. The container defaults to
 `connector-input`. Deployment creates a Python 3.14 Linux Flex Consumption app,
 system-assigned managed identity, host storage, monitoring, a separate monitored storage account
-and container, a Connector Namespace, an OAuth Blob connection, and an enabled
+and container, a Connector Namespace, a managed-identity Blob connection, and an enabled
 Poll trigger config named `azureblob-onazureblobupdatedfile`.
 
 Set `APPLICATIONINSIGHTS_LOCATION` to a supported region before provisioning if
 the app region does not offer Application Insights. An empty value uses the app region.
 
-The monitored storage account disables shared-key access. The deploying developer
-gets Storage Blob Data Contributor access to upload blobs. Authorize the connection
-with this same user, or grant the consenting user the required source-storage data
-access separately. OAuth source access is distinct from the host's managed identity:
-function and developer connection access policies allow polling and
-event receipt; they do not replace the connection user's source-storage permissions.
-Allow time for role assignments to take effect.
+The monitored storage account disables shared-key access. The namespace's
+system-assigned identity gets Storage Blob Data Reader on the monitored container
+to read blobs and detect changes. The deploying developer retains Storage Blob Data
+Contributor access on the separate monitored account to upload test blobs.
+Namespace, function, and developer connection access policies are separate from
+source-storage RBAC. The Function App keeps its host-storage and monitoring grants;
+it receives no source-storage grant. The `connectorNamespacePrincipalId` output
+identifies the source reader. No OAuth consent is needed. Allow time for role
+assignments to take effect.
 
 The template does not reserve always-ready instances (`alwaysReady: []`).
 
@@ -62,7 +64,20 @@ and
 `OnAzureBlobUpdatedFileTriggerConfigName`. The endpoint comes from the service's
 receive URI, not a hardcoded region URL.
 
-The hook opens OAuth consent if the connection is not Connected. It creates local
+Reprovisioning an existing environment creates a separate connection whose deterministic
+name ends in `-mi`. An OAuth connection cannot migrate to managed identity. Rerunning
+the hook alone does not migrate authentication. Incremental deployment preserves
+the old OAuth connection; remove it only after checking that no
+other triggers or clients use it. The Poll trigger and deployment outputs use the new
+connection. Existing local settings remain unchanged, so update them explicitly if needed.
+
+The noninteractive hook reads the full connection configuration on each attempt and
+requires `parameterValueSet.name=managedIdentityAuth` before accepting Connected or Ready.
+It makes at most 100 status reads separated by three seconds and fails on Error, a
+failed status read, or timeout without opening OAuth consent. Verify the namespace
+connection access policy and container Reader grant, allow RBAC propagation, then rerun.
+Readiness does not prove event delivery; upload and overwrite a test blob and check logs.
+The hook creates local
 settings only when absent. Existing regular files remain byte-for-byte unchanged;
 directories and links fail. Re-run with `azd hooks run postdeploy`. To replace
 settings explicitly, run `pwsh -File infra/scripts/postdeploy.ps1 -ForceLocalSettings`
@@ -75,7 +90,7 @@ needs no client-ID settings. Cloud Flex settings omit `FUNCTIONS_WORKER_RUNTIME`
 
 Install [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
 and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-After provisioning and authorizing the connection:
+After provisioning the managed-identity connection:
 
 ```bash
 python -m venv .venv
@@ -98,7 +113,7 @@ existing settings, so update them explicitly after changing environments.
 
 ## Verify and clean up
 
-Check that the connection is Connected and the Poll trigger Enabled in
+Check that the connection is Connected or Ready and the Poll trigger Enabled in
 [Connector Namespaces](https://connectors.azure.com/). Upload a test blob to the
 container shown in the `monitoredStorageAccountName` and `monitoredContainerName`
 azd outputs, then overwrite it. Use Microsoft Entra authentication for uploads,

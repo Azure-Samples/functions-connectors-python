@@ -49,68 +49,31 @@ settings=$(printf '%s' "$outputs" | jq '{
   }')
 write_local_settings "$settings" "$force"
 
-echo 'Authorizing Azure Blob Storage connection...'
-currentStatus=$(az connector-namespace connection show \
-  -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-  -n "$connectorNamespaceConnectionName" --query 'properties.overallStatus' -o tsv)
-currentStatus="${currentStatus%$'\r'}"
-
-if [[ "$(printf '%s' "$currentStatus" | tr '[:upper:]' '[:lower:]')" == 'connected' ]]; then
-  echo 'Connection is already authorized.'
-else
-  echo 'Sign in with the same user granted source storage access during provisioning.'
-  consentLink=""
-  for attempt in 1 2 3 4 5; do
-    consentLink=$(az connector-namespace connection list-consent-links \
-      -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-      --connection-name "$connectorNamespaceConnectionName" \
-      --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" \
-      --query 'value[0].link' -o tsv 2>/dev/null) || consentLink=""
-    consentLink="${consentLink%$'\r'}"
-    if [[ -z "$consentLink" || "$consentLink" == 'null' ]]; then
-      consentLink=$(az connector-namespace connection list-consent-links \
-        -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-        --connection-name "$connectorNamespaceConnectionName" \
-        --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" \
-        --query 'link' -o tsv 2>/dev/null) || consentLink=""
-    fi
-    consentLink="${consentLink%$'\r'}"
-    if [[ -n "$consentLink" && "$consentLink" != 'null' ]]; then
-      break
-    fi
-    if [[ "$attempt" != '5' ]]; then
-      echo "Consent link attempt $attempt failed. Retrying in 5 seconds..."
-      sleep 5
-    fi
-  done
-  if [[ -z "$consentLink" || "$consentLink" == 'null' ]]; then
-    echo 'ERROR: Failed to create consent link.' >&2
+echo 'Waiting for the managed-identity Azure Blob connection...'
+for ((attempt=1; attempt<=100; attempt++)); do
+  if ! connectionJson=$(az connector-namespace connection show \
+    -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
+    -n "$connectorNamespaceConnectionName" -o json 2>/dev/null); then
+    echo 'ERROR: Failed to read connection status.' >&2
     exit 1
   fi
-  echo "Consent URL: $consentLink"
-  if command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$consentLink" >/dev/null 2>&1 || true
-  elif command -v open >/dev/null 2>&1; then
-    open "$consentLink" >/dev/null 2>&1 || true
-  else
-    echo 'Open the consent URL manually.'
-  fi
-  deadline=$((SECONDS + 300))
-  while (( SECONDS < deadline )); do
-    sleep 3
-    currentStatus=$(az connector-namespace connection show \
-      -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-      -n "$connectorNamespaceConnectionName" --query 'properties.overallStatus' -o tsv)
-    currentStatus="${currentStatus%$'\r'}"
-    echo "Connection status: $currentStatus"
-    if [[ "$(printf '%s' "$currentStatus" | tr '[:upper:]' '[:lower:]')" == 'connected' ]]; then
-      break
-    fi
-  done
-  if [[ "$(printf '%s' "$currentStatus" | tr '[:upper:]' '[:lower:]')" != 'connected' ]]; then
-    echo 'ERROR: Timed out waiting for the connection to reach Connected status.' >&2
+  if ! jq -e 'type == "object" and .properties.parameterValueSet.name == "managedIdentityAuth"' <<< "$connectionJson" >/dev/null 2>/dev/null; then
+    echo 'ERROR: Azure Blob connection must use managedIdentityAuth. Reprovision the separate -mi connection; an existing OAuth connection cannot migrate to managed identity.' >&2
     exit 1
   fi
-fi
+  currentStatus=$(jq -r '.properties.overallStatus | if type == "string" then . else "" end' <<< "$connectionJson")
+  currentStatus=$(printf '%s' "$currentStatus" | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  case "$currentStatus" in
+    connected|ready) break ;;
+    error)
+      echo 'ERROR: The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
+      exit 1 ;;
+  esac
+  if (( attempt == 100 )); then
+    echo 'ERROR: Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
+    exit 1
+  fi
+  sleep 3
+done
 
-echo 'Done. The Azure Blob connection is authorized; Bicep manages the Poll trigger.'
+echo 'Done. The managed-identity Azure Blob connection is ready; Bicep manages the Poll trigger.'
