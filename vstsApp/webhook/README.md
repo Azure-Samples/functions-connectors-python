@@ -14,7 +14,11 @@ This standalone Azure Functions Python project receives Connector Namespace call
 | `OnVstsWorkItemCreated` | `OnWorkItemCreatedV2` | `account`, `project` |
 | `OnVstsWorkItemUpdated` | `OnWorkItemUpdatedV2` | `account`, `project` |
 
-Handlers in [function_app.py](function_app.py) accept raw `str`, log only the trigger name, and return `None`. Unlike the Node sample, they do not return the payload. No connector SDK or Python connector extension package is needed for raw handlers.
+Handlers in [function_app.py](function_app.py) accept typed lists from `azurefunctions.extensions.connectors.visualstudioteamservices` (imported as `devops`), log only the trigger name and item count, and return `None`. Builds use `list[devops.BuildResult]`, pull requests use `list[devops.GitPullRequest]`, pushes use `list[devops.GitPush]`, TFVC check-ins use `list[devops.TfvcChangeset]`, and work items use `list[devops.TriggerWorkItemResponse]`. Unlike the Node sample, they do not log item fields or return the payload.
+
+The Node contexts normalize Connector Namespace callbacks containing a single item in `body` or an item array in `body.value`; the Python converter supports both shapes. These are not direct Azure DevOps service-hook envelopes with `eventType` and `resource`. Do not send those envelopes to these handlers without a separate normalization contract.
+
+[requirements.txt](requirements.txt) adds `azurefunctions-extensions-connectors>=1.0.0b4`. Use a package build that includes the Azure DevOps bindings. This floor matches Planner and the current extension source version, not a verified published wheel with DevOps support. Offline checks use local extension and connector SDK source checkouts. See the [shared package limits](../README.md).
 
 ## Prepare before provisioning
 
@@ -54,7 +58,9 @@ The helper creates the ignored local settings file atomically from [local.settin
 
 Temporary request directories and generated settings use current-user-only Windows ACLs or owner-only POSIX permissions. The Windows ACL uses the current token's SID. Permission failures stop setup, temporary files are removed after success or failure, and an atomic replacement failure leaves the old local settings intact. Callback keys never enter local settings.
 
-For local binding startup, use Azurite, sign in as the developer with connection access, install [requirements.txt](requirements.txt) in a virtual environment, and run `func start`. [host.json](host.json) uses preview bundle `[4.50.0, 5.0.0)`. The deployed subscriptions still target the **cloud** app: starting a local host does not redirect callbacks. This sample does not create public tunnels or replace callbacks with local origins. To exercise the raw handlers offline, pass any string and verify the arrival log and `None` result without parsing the payload.
+For local binding startup, use Azurite, sign in as the developer with connection access, install [requirements.txt](requirements.txt) in a virtual environment, and run `func start`. [host.json](host.json) uses preview bundle `[4.50.0, 5.0.0)`. The deployed subscriptions still target the **cloud** app: starting a local host does not redirect callbacks. This sample does not create public tunnels or replace callbacks with local origins.
+
+For offline checks, convert a single-item `body` or a `body.value` array through the extension's `ConnectorConverter` using the handler's actual annotation. Check SDK item types and nested fields, then invoke the handler and check only the name/count log and `None` result. An empty batch logs zero. Malformed JSON, non-object items, and invalid batch arrays raise conversion errors; handlers do not turn them into successful empty callbacks.
 
 For end-to-end validation, create a selected Azure DevOps event and check its log in the deployed Function App. Preview-region availability, consent, bundle startup, and actual source callback delivery need live validation; offline checks do not prove delivery.
 

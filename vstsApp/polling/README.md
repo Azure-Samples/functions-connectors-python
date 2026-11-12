@@ -14,7 +14,9 @@ This standalone Azure Functions Python project uses Connector Namespace **Poll d
 | `OnVstsWorkItemCreated` | `OnWorkItemCreatedV2` | `account`, `project` |
 | `OnVstsWorkItemUpdated` | `OnWorkItemUpdatedV2` | `account`, `project` |
 
-All handlers in [function_app.py](function_app.py) take raw `str`, log the trigger name only, and return `None`. Do not deserialize the payload or return it as a callback response.
+All handlers in [function_app.py](function_app.py) take typed lists from `azurefunctions.extensions.connectors.visualstudioteamservices` (imported as `devops`), log only the trigger name and item count, and return `None`. Builds use `list[devops.BuildResult]`, pull requests use `list[devops.GitPullRequest]`, pushes use `list[devops.GitPush]`, TFVC check-ins use `list[devops.TfvcChangeset]`, and work items use `list[devops.TriggerWorkItemResponse]`. The extension converts the batch; do not log item fields or return the payload.
+
+[requirements.txt](requirements.txt) adds `azurefunctions-extensions-connectors>=1.0.0b4`. Use a package build that includes the Azure DevOps bindings. This floor matches Planner and the current extension source version, not a verified published wheel with DevOps support. Offline checks use local extension and connector SDK source checkouts. See the [shared payload and package limits](../README.md).
 
 ## Prepare before provisioning
 
@@ -50,7 +52,9 @@ The hook creates the ignored local settings file atomically from [local.settings
 
 Temporary request directories and generated local settings use a current-user-only Windows ACL or owner-only POSIX permissions. The Windows ACL uses the current token's SID, not a guessed account name. Permission failures stop setup. Temporary files are removed on success and failure; an atomic replacement failure preserves the old local settings.
 
-Create source events for a selected operation and check the corresponding arrival log. Running cloud and local listeners on the same Poll trigger consumes the same queue, so stop one host when testing the other. No payloads or secrets appear in sample logs. [host.json](host.json) uses the preview extension bundle `[4.50.0, 5.0.0)`.
+For offline handler checks, convert a JSON item, item array, or `body.value` batch through the extension's `ConnectorConverter` using the handler's actual annotation. Check SDK item types and nested fields before invoking the handler, then check the name/count log and `None` result. An empty batch logs zero; malformed JSON, non-object items, and invalid batch arrays raise conversion errors rather than count as an empty success.
+
+Create source events for a selected operation and check the corresponding name/count log. Running cloud and local listeners on the same Poll trigger consumes the same queue, so stop one host when testing the other. No payloads or secrets appear in sample logs. [host.json](host.json) uses the preview extension bundle `[4.50.0, 5.0.0)`.
 
 ## Cleanup and limits
 
