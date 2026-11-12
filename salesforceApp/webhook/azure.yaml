@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: azure-functions-salesforce-python-webhook
+metadata:
+  template: azure-functions-salesforce-python-webhook@0.0.1-alpha
+hooks:
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+      interactive: true
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+      interactive: true
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

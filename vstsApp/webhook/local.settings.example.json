@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "VstsConnection": "",
+    "AzureWebJobs.OnVstsBuildCompleted.Disabled": "true",
+    "AzureWebJobs.OnVstsGitPullClosed.Disabled": "true",
+    "AzureWebJobs.OnVstsGitPullCreated.Disabled": "true",
+    "AzureWebJobs.OnVstsGitPush.Disabled": "true",
+    "AzureWebJobs.OnVstsTfvcCheckIn.Disabled": "true",
+    "AzureWebJobs.OnVstsWorkItemAssigned.Disabled": "true",
+    "AzureWebJobs.OnVstsWorkItemClosed.Disabled": "true",
+    "AzureWebJobs.OnVstsWorkItemCreated.Disabled": "true",
+    "AzureWebJobs.OnVstsWorkItemUpdated.Disabled": "true"
+  }
+}

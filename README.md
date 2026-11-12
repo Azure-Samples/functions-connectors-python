@@ -46,9 +46,12 @@ The included deployment templates use Python 3.14 on Flex Consumption.
 |---|---|
 | [Azure Blob](./azureblobApp/README.md) | Azure Blob Storage |
 | [Dataverse](./dataverseApp/README.md) | Microsoft Dataverse (Common Data Service) |
+| [Azure DevOps](./vstsApp/README.md) | Azure DevOps (Entra OAuth) |
 | [Kusto](./kustoApp/README.md) | Azure Data Explorer |
 | [Office 365](./office365App/README.md) | Office 365 Outlook |
 | [OneDrive](./onedriveApp/README.md) | OneDrive for Business |
+| [Planner](./plannerApp/README.md) | Microsoft Planner |
+| [Salesforce](./salesforceApp/README.md) | Salesforce |
 | [SharePoint](./sharepointApp/README.md) | SharePoint Online |
 | [Teams](./teamsApp/README.md) | Microsoft Teams |
 | [Generic](./genericApp/README.md) | Any connector, using raw string payloads |

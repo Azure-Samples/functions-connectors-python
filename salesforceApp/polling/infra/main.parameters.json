@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "connectorNamespaceLocation": { "value": "${CONNECTOR_NAMESPACE_LOCATION=brazilsouth}" },
+    "applicationInsightsLocation": { "value": "${APPLICATION_INSIGHTS_LOCATION=}" },
+    "userPrincipalId": { "value": "${AZURE_PRINCIPAL_ID}" },
+    "authenticationParameterSetName": { "value": "${SALESFORCE_AUTHENTICATION_PARAMETER_SET=BasicAuthentication}" }
+  }
+}

@@ -1,0 +1,12 @@
+.azure
+.venv
+__pycache__
+.python_packages
+local.settings.json
+local.settings.example.json
+trigger-inputs.json
+trigger-inputs.example.json
+infra
+README.md
+azure.yaml
+.planner-settings-*
