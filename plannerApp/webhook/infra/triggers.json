@@ -1,0 +1,5 @@
+[
+  {"functionName": "OnPlannerCompleteTask", "operationName": "OnCompleteTask_V3", "requiredParameters": ["groupId", "id"]},
+  {"functionName": "OnPlannerNewTask", "operationName": "OnNewTask_V3", "requiredParameters": ["groupId", "id"]},
+  {"functionName": "OnPlannerTaskAssignedToMe", "operationName": "OnTaskAssignedToMe_V2", "requiredParameters": []}
+]

@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "AzureWebJobs.OnPlannerCompleteTask.Disabled": "true",
+    "AzureWebJobs.OnPlannerNewTask.Disabled": "true",
+    "AzureWebJobs.OnPlannerTaskAssignedToMe.Disabled": "true",
+    "OnPlannerCompleteTaskTriggerConfigName": "configure-with-postdeploy",
+    "OnPlannerNewTaskTriggerConfigName": "configure-with-postdeploy",
+    "OnPlannerTaskAssignedToMeTriggerConfigName": "configure-with-postdeploy"
+  }
+}

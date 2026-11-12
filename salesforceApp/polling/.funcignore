@@ -1,0 +1,12 @@
+.git*
+.azure
+.venv
+__pycache__
+*.pyc
+local.settings*.json
+trigger-inputs*.json
+.local-settings-*
+salesforce-hook-*
+infra
+README.md
+.func

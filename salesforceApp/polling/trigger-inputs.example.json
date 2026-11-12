@@ -1,0 +1,12 @@
+[
+  {
+    "functionName": "OnSalesforceNewItems",
+    "operationName": "GetOnNewItems",
+    "parameters": [{ "name": "table", "value": "<REAL_SALESFORCE_OBJECT_ID>" }]
+  },
+  {
+    "functionName": "OnSalesforceUpdatedItems",
+    "operationName": "GetOnUpdatedItems",
+    "parameters": [{ "name": "table", "value": "<REAL_SALESFORCE_OBJECT_ID>" }]
+  }
+]

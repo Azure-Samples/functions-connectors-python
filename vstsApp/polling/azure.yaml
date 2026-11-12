@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://aka.ms/azure-dev/azure.yaml.json
+name: azure-functions-vsts-python-polling
+metadata:
+  template: azure-functions-vsts-python-polling@0.0.1-alpha
+hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/preprovision.ps1
+    posix:
+      shell: sh
+      run: ./infra/scripts/preprovision.sh
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+      interactive: true
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+      interactive: true
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

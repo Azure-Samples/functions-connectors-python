@@ -1,0 +1,10 @@
+.azure/
+.venv/
+__pycache__/
+*.pyc
+local.settings.json
+trigger-inputs.json
+.vsts-settings-*
+__azurite_db*__.*
+__blobstorage__/
+__queuestorage__/

@@ -1,0 +1,13 @@
+.azure/
+.venv/
+__pycache__/
+*.pyc
+.python_packages/
+local.settings.json
+trigger-inputs.json
+.local-settings-*
+salesforce-hook-*/
+.func/
+bin/
+obj/
+infra/main.json
