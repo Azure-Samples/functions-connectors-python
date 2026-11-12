@@ -16,6 +16,17 @@ resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-prev
   properties: { connectorName: 'onedriveforbusiness' }
 }
 
+resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: connection
+  name: 'namespace-msi'
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: { objectId: connectorNamespace.identity.principalId, tenantId: tenant().tenantId }
+    }
+  }
+}
+
 output resourceId string = connectorNamespace.id
 output name string = connectorNamespace.name
 output connectionName string = connection.name

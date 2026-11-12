@@ -18,6 +18,17 @@ resource dataverseConnection 'Microsoft.Web/connectorGateways/connections@2026-0
   properties: { connectorName: 'commondataservice' }
 }
 
+resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: dataverseConnection
+  name: 'namespace-msi'
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: { objectId: connectorNamespace.identity.principalId, tenantId: tenant().tenantId }
+    }
+  }
+}
+
 resource userAccessPolicy 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
   parent: dataverseConnection
   name: 'dev-user'
