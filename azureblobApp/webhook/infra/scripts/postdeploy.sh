@@ -56,21 +56,26 @@ write_local_settings "$settings" "$force"
 
 echo 'Waiting for the managed-identity Azure Blob connection...'
 for ((attempt=1; attempt<=100; attempt++)); do
-  if ! currentStatus=$(az connector-namespace connection show \
+  if ! connectionJson=$(az connector-namespace connection show \
     -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-    -n "$connectorNamespaceConnectionName" --query 'properties.overallStatus' -o tsv 2>/dev/null); then
+    -n "$connectorNamespaceConnectionName" -o json 2>/dev/null); then
     echo 'ERROR: Failed to read connection status.' >&2
     exit 1
   fi
+  if ! jq -e 'type == "object" and .properties.parameterValueSet.name == "managedIdentityAuth"' <<< "$connectionJson" >/dev/null 2>/dev/null; then
+    echo 'ERROR: Azure Blob connection must use managedIdentityAuth. Reprovision the separate -mi connection; an existing OAuth connection cannot migrate to managed identity.' >&2
+    exit 1
+  fi
+  currentStatus=$(jq -r '.properties.overallStatus | if type == "string" then . else "" end' <<< "$connectionJson")
   currentStatus=$(printf '%s' "$currentStatus" | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   case "$currentStatus" in
     connected|ready) break ;;
     error)
-      echo 'ERROR: The managed-identity Blob connection is in Error status. Check namespace source-storage RBAC.' >&2
+      echo 'ERROR: The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
       exit 1 ;;
   esac
   if (( attempt == 100 )); then
-    echo 'ERROR: Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status.' >&2
+    echo 'ERROR: Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
     exit 1
   fi
   sleep 3

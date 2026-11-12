@@ -44,7 +44,8 @@ var storageAccountName = '${abbrs.storageStorageAccounts}${resourceToken}'
 var logAnalyticsName = '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
 var appInsightsName = '${abbrs.insightsComponents}${resourceToken}'
 var connectorNamespaceName = '${abbrs.connectorNamespaces}${resourceToken}'
-var connectorNamespaceConnectionName = '${abbrs.connectorNamespacesConnections}${resourceToken}'
+// Use a separate connection because an existing OAuth connection cannot migrate to managed identity.
+var connectorNamespaceConnectionName = '${abbrs.connectorNamespacesConnections}${resourceToken}-mi'
 var monitoredStorageAccountName = '${abbrs.storageStorageAccounts}mon${take(resourceToken, 20)}'
 
 var deploymentStorageContainerName = 'app-package-${take(functionAppName, 32)}-${take(toLower(uniqueString(functionAppName, environmentName)), 7)}'

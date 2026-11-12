@@ -64,9 +64,20 @@ and
 `OnAzureBlobUpdatedFileTriggerConfigName`. The endpoint comes from the service's
 receive URI, not a hardcoded region URL.
 
-The hook waits for Connected or Ready, with at most 100 status reads separated by
-three seconds. It fails on Error, a failed status read, or timeout without opening
-OAuth consent. It creates local
+Reprovisioning an existing environment creates a separate connection whose deterministic
+name ends in `-mi`. An OAuth connection cannot migrate to managed identity. Rerunning
+the hook alone does not migrate authentication. Incremental deployment preserves
+the old OAuth connection; remove it only after checking that no
+other triggers or clients use it. The Poll trigger and deployment outputs use the new
+connection. Existing local settings remain unchanged, so update them explicitly if needed.
+
+The noninteractive hook reads the full connection configuration on each attempt and
+requires `parameterValueSet.name=managedIdentityAuth` before accepting Connected or Ready.
+It makes at most 100 status reads separated by three seconds and fails on Error, a
+failed status read, or timeout without opening OAuth consent. Verify the namespace
+connection access policy and container Reader grant, allow RBAC propagation, then rerun.
+Readiness does not prove event delivery; upload and overwrite a test blob and check logs.
+The hook creates local
 settings only when absent. Existing regular files remain byte-for-byte unchanged;
 directories and links fail. Re-run with `azd hooks run postdeploy`. To replace
 settings explicitly, run `pwsh -File infra/scripts/postdeploy.ps1 -ForceLocalSettings`

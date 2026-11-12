@@ -42,21 +42,29 @@ Write-LocalSettings @{
 
 Write-Host 'Waiting for the managed-identity Azure Blob connection...' -ForegroundColor Yellow
 for ($attempt = 1; $attempt -le 100; $attempt++) {
-    $currentStatus = az connector-namespace connection show `
+    $connectionJson = az connector-namespace connection show `
         -g $resourceGroupName --namespace $connectorNamespaceName `
-        -n $connectorNamespaceConnectionName --query 'properties.overallStatus' -o tsv 2>$null
+        -n $connectorNamespaceConnectionName -o json 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw 'Failed to read connection status.'
     }
 
+    try { $connection = ($connectionJson -join "`n") | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw 'Invalid connection configuration response.' }
+    if ($connection -isnot [System.Management.Automation.PSCustomObject] -or
+        $connection.properties.parameterValueSet.name -cne 'managedIdentityAuth') {
+        throw 'Azure Blob connection must use managedIdentityAuth. Reprovision the separate -mi connection; an existing OAuth connection cannot migrate to managed identity.'
+    }
+
+    $currentStatus = $connection.properties.overallStatus
     if ($currentStatus -is [string] -and $currentStatus.Trim() -in @('Connected', 'Ready')) {
         break
     }
     if ($currentStatus -is [string] -and $currentStatus.Trim() -eq 'Error') {
-        throw 'The managed-identity Blob connection is in Error status. Check namespace source-storage RBAC.'
+        throw 'The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
     }
     if ($attempt -eq 100) {
-        throw 'Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status.'
+        throw 'Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
     }
 
     Start-Sleep -Seconds 3

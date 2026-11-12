@@ -59,9 +59,21 @@ host-storage and monitoring grants; it receives no source-storage grant.
 The `connectorNamespacePrincipalId` output identifies the source reader.
 No OAuth consent is needed. Allow time for role assignments to take effect.
 
-The post-deploy hook waits for Connected or Ready, with at most 100 status reads
-separated by three seconds. It fails on Error, a failed status read, or timeout
-without opening OAuth consent. Once ready, it creates or updates the enabled Webhook trigger.
+Reprovisioning an existing environment creates a separate connection whose deterministic
+name ends in `-mi`. An OAuth connection cannot migrate to managed identity. Rerunning
+the hook alone does not migrate authentication. Incremental deployment preserves the
+old OAuth connection and its webhook trigger. After confirming
+delivery through the new connection, disable or remove the old trigger to avoid duplicate
+events. Remove the old connection only after checking that no other clients use it.
+The deployment outputs and new webhook trigger use the MI connection.
+
+The noninteractive post-deploy hook reads the full connection configuration on each
+attempt and requires `parameterValueSet.name=managedIdentityAuth` before accepting
+Connected or Ready. It makes at most 100 status reads separated by three seconds and
+fails on Error, a failed status read, or timeout without opening OAuth consent.
+Verify the namespace connection access policy and container Reader grant, allow RBAC
+propagation, then rerun. Readiness does not prove event delivery; upload and overwrite
+a test blob and check logs. Once ready, the hook creates or updates the enabled Webhook trigger.
 It passes the monitored account as `dataset` and base64 of `%2f<container>` as
 `folderId`. Callback authentication uses the connector extension system key, not
 an ordinary function key. Temporary callback-authentication files are cleaned up.
