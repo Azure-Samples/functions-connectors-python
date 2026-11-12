@@ -11,6 +11,13 @@ Polling adds only `delivery_mode=func.DeliveryMode.POLL` and
 `trigger_config_name="%OnAzureBlobUpdatedFileTriggerConfigName%"` to the decorator.
 Both use `connection="ConnectorNamespace"`.
 
+Both Blob connections use the namespace's system-assigned managed identity, not
+OAuth consent. Each namespace gets Storage Blob Data Reader on its monitored
+container; the developer retains source-account upload access. This source RBAC
+is separate from the Function App's host-storage roles and delivery authentication.
+The hooks wait for Connected or Ready before completing setup and reject Error or
+timeout. Both deployments export `connectorNamespacePrincipalId`.
+
 Each folder includes its own infrastructure, dependencies, hooks, and local
 settings example. Run `azd up` from the chosen folder. Use different azd environment
 names if you deploy both, so they do not overwrite resources.

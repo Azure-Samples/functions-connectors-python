@@ -16,7 +16,21 @@ resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-prev
   name: connectionName
   properties: {
     connectorName: 'azureblob'
-    parameterValueSet: { name: 'tokenBasedAuth' }
+    parameterValueSet: { name: 'managedIdentityAuth', values: {} }
+    connectionProperties: {
+      authentication: { type: 'ManagedServiceIdentity' }
+    }
+  }
+}
+
+resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: connection
+  name: 'namespace-msi'
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: { objectId: connectorNamespace.identity.principalId, tenantId: tenant().tenantId }
+    }
   }
 }
 
@@ -33,5 +47,6 @@ resource developerAccess 'Microsoft.Web/connectorGateways/connections/accessPoli
 
 output resourceId string = connectorNamespace.id
 output name string = connectorNamespace.name
+output principalId string = connectorNamespace.identity.principalId
 output connectionName string = connection.name
 output azureblobConnectionRuntimeUrl string = connection.properties.connectionRuntimeUrl

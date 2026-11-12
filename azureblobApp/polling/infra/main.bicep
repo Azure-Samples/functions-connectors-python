@@ -25,7 +25,7 @@ param monitoredContainerName string = 'connector-input'
 metadata name = 'Azure Functions Azure Blob Polling Connector Trigger (Python)'
 metadata description = 'Connector Namespace Poll delivery using managed identity, without a callback URL.'
 
-@description('Developer identity for local polling, source blob access, and host storage. Use this same identity for OAuth consent.')
+@description('Developer identity for local polling, source blob uploads, and host storage.')
 @metadata({
   azd: {
     type: 'principalId'
@@ -50,6 +50,7 @@ var monitoredStorageAccountName = '${abbrs.storageStorageAccounts}mon${take(reso
 var deploymentStorageContainerName = 'app-package-${take(functionAppName, 32)}-${take(toLower(uniqueString(functionAppName, environmentName)), 7)}'
 var storageBlobDataOwner = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+var storageBlobDataReader = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
 var storageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
@@ -159,7 +160,18 @@ module monitoredStorageAccount 'br/public:avm/res/storage/storage-account:0.32.0
     }
     minimumTlsVersion: 'TLS1_2'
     blobServices: {
-      containers: [{ name: monitoredContainerName }]
+      containers: [
+        {
+          name: monitoredContainerName
+          roleAssignments: [
+            {
+              roleDefinitionIdOrName: storageBlobDataReader
+              principalId: connectorNamespace.outputs.principalId
+              principalType: 'ServicePrincipal'
+            }
+          ]
+        }
+      ]
     }
     roleAssignments: [
       {
@@ -275,6 +287,9 @@ output functionAppDefaultHostname string = functionApp.outputs.defaultHostname
 
 @description('The name of the created Connector Namespace.')
 output connectorNamespaceName string = connectorNamespace.outputs.name
+
+@description('The principal ID of the Connector Namespace managed identity used for source blob access.')
+output connectorNamespacePrincipalId string = connectorNamespace.outputs.principalId
 
 @description('The name of the Azure Blob connection on the Connector Namespace.')
 output connectorNamespaceConnectionName string = connectorNamespace.outputs.connectionName
