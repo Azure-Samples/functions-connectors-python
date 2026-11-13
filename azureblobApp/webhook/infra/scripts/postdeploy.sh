@@ -49,6 +49,7 @@ functionAppDefaultHostname=$(printf '%s' "$outputs" | jq -r '.functionAppDefault
 subscriptionId=$(printf '%s' "$outputs" | jq -r '.AZURE_SUBSCRIPTION_ID')
 monitoredStorageAccountName=$(printf '%s' "$outputs" | jq -r '.monitoredStorageAccountName')
 containerName=$(printf '%s' "$outputs" | jq -r '.monitoredContainerName')
+connectionUri="/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.Web/connectorGateways/${connectorNamespaceName}/connections/${connectorNamespaceConnectionName}?api-version=2026-05-01-preview"
 
 settings=$(jq -n '{IsEncrypted:false,Values:{AzureWebJobsStorage:"UseDevelopmentStorage=true",
   FUNCTIONS_WORKER_RUNTIME:"python",PYTHON_ISOLATE_WORKER_DEPENDENCIES:"1"}}')
@@ -56,9 +57,9 @@ write_local_settings "$settings" "$force"
 
 echo 'Waiting for the managed-identity Azure Blob connection...'
 for ((attempt=1; attempt<=100; attempt++)); do
-  if ! connectionJson=$(az connector-namespace connection show \
-    -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-    -n "$connectorNamespaceConnectionName" -o json 2>/dev/null); then
+  if ! connectionJson=$(az rest --method get --url "$connectionUri" --subscription "$subscriptionId" \
+    --query '{properties:{overallStatus:properties.overallStatus,parameterValueSet:{name:properties.parameterValueSet.name}}}' \
+    -o json); then
     echo 'ERROR: Failed to read connection status.' >&2
     exit 1
   fi
@@ -82,9 +83,9 @@ for ((attempt=1; attempt<=100; attempt++)); do
 done
 
 folderId=$(printf '%%2f%s' "$containerName" | base64 | tr -d '\r\n')
-existingTriggers=$(az connector-namespace trigger list -g "$resourceGroupName" --namespace "$connectorNamespaceName" --query '[].name' -o json 2>/dev/null)
+existingTriggers=$(az connector-namespace trigger list --subscription "$subscriptionId" -g "$resourceGroupName" --namespace "$connectorNamespaceName" --query '[].name' -o json 2>/dev/null)
 jq -e 'type == "array" and all(.[]; type == "string" and test("\\S"))' <<< "$existingTriggers" >/dev/null
-connectorExtensionKey=$(az functionapp keys list -g "$resourceGroupName" -n "$functionAppName" --query 'systemKeys.connector_extension' -o tsv 2>/dev/null)
+connectorExtensionKey=$(az functionapp keys list --subscription "$subscriptionId" -g "$resourceGroupName" -n "$functionAppName" --query 'systemKeys.connector_extension' -o tsv 2>/dev/null)
 connectorExtensionKey="${connectorExtensionKey%$'\r'}"
 if [[ -z "$connectorExtensionKey" || "$connectorExtensionKey" == 'null' ]]; then
   echo 'ERROR: Failed to fetch the connector_extension system key.' >&2
@@ -111,7 +112,7 @@ metadata=$(jq -cn --arg app "$functionAppName" --arg group "$resourceGroupName" 
 verb=create
 if jq -e --arg name "$triggerName" 'index($name) != null' <<< "$existingTriggers" >/dev/null; then verb=update; fi
 az connector-namespace trigger "$verb" \
-  -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
+  --subscription "$subscriptionId" -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
   -n "$triggerName" \
   --connection-details "$connectionDetails" \
   --operation-name "$operationName" \

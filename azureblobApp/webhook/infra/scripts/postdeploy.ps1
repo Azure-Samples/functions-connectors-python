@@ -33,6 +33,7 @@ $functionAppName = $outputs.functionAppName
 $subscriptionId = $outputs.AZURE_SUBSCRIPTION_ID
 $monitoredStorageAccountName = $outputs.monitoredStorageAccountName
 $containerName = $outputs.monitoredContainerName
+$connectionUri = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Web/connectorGateways/$connectorNamespaceName/connections/${connectorNamespaceConnectionName}?api-version=2026-05-01-preview"
 
 Write-LocalSettings @{
     FUNCTIONS_WORKER_RUNTIME = 'python'
@@ -42,9 +43,9 @@ Write-LocalSettings @{
 
 Write-Host 'Waiting for the managed-identity Azure Blob connection...' -ForegroundColor Yellow
 for ($attempt = 1; $attempt -le 100; $attempt++) {
-    $connectionJson = az connector-namespace connection show `
-        -g $resourceGroupName --namespace $connectorNamespaceName `
-        -n $connectorNamespaceConnectionName -o json 2>$null
+    $connectionJson = az rest --method get --url $connectionUri --subscription $subscriptionId `
+        --query '{properties:{overallStatus:properties.overallStatus,parameterValueSet:{name:properties.parameterValueSet.name}}}' `
+        -o json
     if ($LASTEXITCODE -ne 0) {
         throw 'Failed to read connection status.'
     }
@@ -71,13 +72,13 @@ for ($attempt = 1; $attempt -le 100; $attempt++) {
 }
 
 $folderId = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("%2f$containerName"))
-$rawTriggers = az connector-namespace trigger list -g $resourceGroupName --namespace $connectorNamespaceName --query '[].name' -o json 2>$null
+$rawTriggers = az connector-namespace trigger list --subscription $subscriptionId -g $resourceGroupName --namespace $connectorNamespaceName --query '[].name' -o json 2>$null
 if ($LASTEXITCODE -ne 0) { throw 'Could not list existing webhook trigger configurations.' }
 $existingTriggers = ($rawTriggers -join "`n") | ConvertFrom-Json -NoEnumerate
 if ($existingTriggers -isnot [array] -or @($existingTriggers | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) }).Count) {
     throw 'Invalid trigger list response.'
 }
-$connectorExtensionKey = az functionapp keys list -g $resourceGroupName -n $functionAppName --query 'systemKeys.connector_extension' -o tsv 2>$null
+$connectorExtensionKey = az functionapp keys list --subscription $subscriptionId -g $resourceGroupName -n $functionAppName --query 'systemKeys.connector_extension' -o tsv 2>$null
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($connectorExtensionKey) -or $connectorExtensionKey -eq 'null') {
     throw 'Failed to fetch the connector_extension system key.'
 }
@@ -117,7 +118,7 @@ try {
     }
     $verb = if ($triggerName -in $existingTriggers) { 'update' } else { 'create' }
     az connector-namespace trigger $verb `
-        -g $resourceGroupName --namespace $connectorNamespaceName `
+        --subscription $subscriptionId -g $resourceGroupName --namespace $connectorNamespaceName `
         -n $triggerName `
         --connection-details "@$connectionFile" `
         --operation-name $operationName `

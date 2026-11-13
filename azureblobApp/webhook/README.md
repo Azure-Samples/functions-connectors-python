@@ -67,9 +67,10 @@ delivery through the new connection, disable or remove the old trigger to avoid 
 events. Remove the old connection only after checking that no other clients use it.
 The deployment outputs and new webhook trigger use the MI connection.
 
-The noninteractive post-deploy hook reads the full connection configuration on each
-attempt and requires `parameterValueSet.name=managedIdentityAuth` before accepting
-Connected or Ready. It makes at most 100 status reads separated by three seconds and
+The noninteractive post-deploy hook reads the connection authentication and status
+from Azure Resource Manager in the deployment subscription on each attempt. It requires
+`parameterValueSet.name=managedIdentityAuth` before accepting Connected or Ready. It
+makes at most 100 status reads separated by three seconds and
 fails on Error, a failed status read, or timeout without opening OAuth consent.
 Verify the namespace connection access policy and container Reader grant, allow RBAC
 propagation, then rerun. Readiness does not prove event delivery; upload and overwrite

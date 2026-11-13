@@ -20,7 +20,7 @@ if ($outputs -isnot [System.Management.Automation.PSCustomObject]) {
     throw 'Deployment outputs must be a JSON object.'
 }
 
-foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorNamespaceConnectionName', 'connectorPollingEndpoint')) {
+foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorNamespaceConnectionName', 'connectorPollingEndpoint', 'AZURE_SUBSCRIPTION_ID')) {
     $value = $outputs.$key
     if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or $value -eq 'null') {
         throw "Deployment output '$key' must be a nonempty string."
@@ -30,6 +30,8 @@ foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorName
 $resourceGroupName = $outputs.resourceGroupName
 $connectorNamespaceName = $outputs.connectorNamespaceName
 $connectorNamespaceConnectionName = $outputs.connectorNamespaceConnectionName
+$subscriptionId = $outputs.AZURE_SUBSCRIPTION_ID
+$connectionUri = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Web/connectorGateways/$connectorNamespaceName/connections/${connectorNamespaceConnectionName}?api-version=2026-05-01-preview"
 $triggerConfigSettings = $outputs.triggerConfigSettings
 if ($triggerConfigSettings -is [string]) {
     $triggerConfigSettings = $triggerConfigSettings | ConvertFrom-Json
@@ -55,9 +57,9 @@ Write-LocalSettings $values -ForceLocalSettings:$ForceLocalSettings
 
 Write-Host 'Waiting for the managed-identity Azure Blob connection...' -ForegroundColor Yellow
 for ($attempt = 1; $attempt -le 100; $attempt++) {
-    $connectionJson = az connector-namespace connection show `
-        -g $resourceGroupName --namespace $connectorNamespaceName `
-        -n $connectorNamespaceConnectionName -o json 2>$null
+    $connectionJson = az rest --method get --url $connectionUri --subscription $subscriptionId `
+        --query '{properties:{overallStatus:properties.overallStatus,parameterValueSet:{name:properties.parameterValueSet.name}}}' `
+        -o json
     if ($LASTEXITCODE -ne 0) {
         throw 'Failed to read connection status.'
     }

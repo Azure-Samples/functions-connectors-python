@@ -25,7 +25,7 @@ outputs=$(printf '%s' "$outputs" | jq -ce '
   def required_string: type == "string" and test("\\S") and . != "null";
   if type != "object" then error("Deployment outputs must be a JSON object.") else . end
   | if all(.resourceGroupName, .connectorNamespaceName, .connectorNamespaceConnectionName,
-           .connectorPollingEndpoint; required_string)
+           .connectorPollingEndpoint, .AZURE_SUBSCRIPTION_ID; required_string)
     then . else error("Required deployment outputs must be nonempty strings.") end
   | .triggerConfigSettings |= (if type == "string" then fromjson else . end)
   | if (.triggerConfigSettings | type) != "object"
@@ -36,6 +36,8 @@ outputs=$(printf '%s' "$outputs" | jq -ce '
 resourceGroupName=$(printf '%s' "$outputs" | jq -r '.resourceGroupName')
 connectorNamespaceName=$(printf '%s' "$outputs" | jq -r '.connectorNamespaceName')
 connectorNamespaceConnectionName=$(printf '%s' "$outputs" | jq -r '.connectorNamespaceConnectionName')
+subscriptionId=$(printf '%s' "$outputs" | jq -r '.AZURE_SUBSCRIPTION_ID')
+connectionUri="/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.Web/connectorGateways/${connectorNamespaceName}/connections/${connectorNamespaceConnectionName}?api-version=2026-05-01-preview"
 
 settings=$(printf '%s' "$outputs" | jq '{
     IsEncrypted: false,
@@ -51,9 +53,9 @@ write_local_settings "$settings" "$force"
 
 echo 'Waiting for the managed-identity Azure Blob connection...'
 for ((attempt=1; attempt<=100; attempt++)); do
-  if ! connectionJson=$(az connector-namespace connection show \
-    -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
-    -n "$connectorNamespaceConnectionName" -o json 2>/dev/null); then
+  if ! connectionJson=$(az rest --method get --url "$connectionUri" --subscription "$subscriptionId" \
+    --query '{properties:{overallStatus:properties.overallStatus,parameterValueSet:{name:properties.parameterValueSet.name}}}' \
+    -o json); then
     echo 'ERROR: Failed to read connection status.' >&2
     exit 1
   fi
