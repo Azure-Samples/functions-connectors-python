@@ -15,6 +15,6 @@ hooks:
       continueOnError: false
     posix:
       shell: sh
-      run: ./infra/scripts/postdeploy.sh
+      run: bash ./infra/scripts/postdeploy.sh
       interactive: true
       continueOnError: false
