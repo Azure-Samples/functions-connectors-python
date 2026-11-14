@@ -46,8 +46,12 @@ these overrides to restore the deployed callback. Use the polling app to avoid
 a public tunnel.
 
 `-ConsentLinkOnly` / `--consent-link-only` prints the authorization link without
-opening a browser or waiting. Both shells use one Python helper; Bash requires
-neither jq nor PowerShell. Set `PYTHON` to the intended interpreter if needed.
+opening a browser, waiting, or writing local settings or trigger configs. If
+already connected, it reports existing consent without writes. Do not combine
+it with `--local-settings-only`. Rerun without the link-only flag after consent
+to finish setup. Normal setup waits for OAuth before writing settings or triggers.
+Both shells use one Python helper; Bash requires neither jq nor PowerShell.
+Set `PYTHON` to the intended interpreter if needed.
 
 ## Verify and clean up
 

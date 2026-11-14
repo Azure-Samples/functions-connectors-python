@@ -41,7 +41,10 @@ flags. Existing files are preserved; use `-ForceLocalSettings` or
 To generate settings without changing resources or requesting consent, invoke
 the PowerShell hook with `-LocalSettingsOnly` or Bash hook with
 `--local-settings-only`. `-ConsentLinkOnly` / `--consent-link-only` prints a consent
-link without opening a browser or waiting. Bash hooks require Bash and Python,
+link, or reports existing consent, without opening a browser, waiting, or writing
+local settings or trigger configs. These two flags cannot be combined. Rerun
+without the link-only flag after consent to finish setup. Normal setup waits for
+OAuth before writing settings or triggers. Bash hooks require Bash and Python,
 not jq or PowerShell. No credentials are required merely to import the helper.
 
 Use a separate environment for local tests, or stop the deployed app first:

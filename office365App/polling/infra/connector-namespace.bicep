@@ -21,6 +21,17 @@ resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-prev
   }
 }
 
+resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: connection
+  name: 'namespace-msi'
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: { objectId: connectorNamespace.identity.principalId, tenantId: tenant().tenantId }
+    }
+  }
+}
+
 resource developerAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = if (!empty(userPrincipalId)) {
   parent: connection
   name: 'dev-user'
