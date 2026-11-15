@@ -5,8 +5,6 @@ param functionAppName string
 param environmentUrl string
 param tableName string = 'account'
 param enableSeparateRowTriggers bool = false
-@minLength(1)
-param entitySetName string = 'accounts'
 param enableActionTrigger bool = false
 
 var organization = endsWith(environmentUrl, '/') ? substring(environmentUrl, 0, length(environmentUrl) - 1) : environmentUrl
@@ -16,11 +14,6 @@ var destination = {
   functionAppResourceGroup: resourceGroup().name
   functionAppSubscriptionId: subscription().subscriptionId
 }
-var separateTriggers = [
-  { functionName: 'OnDataverseRowAdded', operationName: 'GetOnNewItems_V2' }
-  { functionName: 'OnDataverseRowModified', operationName: 'GetOnUpdatedItems_V2' }
-  { functionName: 'OnDataverseRowDeleted', operationName: 'GetOnDeletedItems_V2' }
-]
 
 resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview' existing = {
   name: namespaceName
@@ -46,23 +39,6 @@ resource rowTrigger 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-p
   }
 }
 
-resource separateRowTriggers 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [for trigger in separateTriggers: if (enableSeparateRowTriggers) {
-  parent: connectorNamespace
-  name: 'dataverse-${toLower(trigger.functionName)}'
-  properties: {
-    connectionDetails: { connectionName: connectionName, connectorName: 'commondataservice' }
-    deliveryMode: 'Poll'
-    operationName: trigger.operationName
-    metadata: union(destination, { functionName: trigger.functionName })
-    parameters: [
-      { name: 'dataset', value: organization }
-      { name: 'table', value: entitySetName }
-    ]
-    state: 'Enabled'
-    type: 'NotSpecified'
-  }
-}]
-
 var receiveUri = split(string(rowTrigger.properties.pollingEndpoints.receiveUri), '?')[0]
 var endpointBase = substring(receiveUri, 0, indexOf(toLower(receiveUri), '/triggerconfigs/'))
 
@@ -73,11 +49,11 @@ output pollingEndpoint string = endsWith(toLower(endpointBase), '/api')
 output triggerConfigSettings object = {
   OnDataverseRowChangedTriggerConfigName: rowTrigger.name
   OnDataverseActionPerformedTriggerConfigName: 'dataverse-ondataverseactionperformed'
-  'AzureWebJobs.OnDataverseActionPerformed.Disabled': string(!enableActionTrigger)
+  'AzureWebJobs.OnDataverseActionPerformed.Disabled': toLower(string(!enableActionTrigger))
   OnDataverseRowAddedTriggerConfigName: 'dataverse-ondataverserowadded'
   OnDataverseRowModifiedTriggerConfigName: 'dataverse-ondataverserowmodified'
   OnDataverseRowDeletedTriggerConfigName: 'dataverse-ondataverserowdeleted'
-  'AzureWebJobs.OnDataverseRowAdded.Disabled': string(!enableSeparateRowTriggers)
-  'AzureWebJobs.OnDataverseRowModified.Disabled': string(!enableSeparateRowTriggers)
-  'AzureWebJobs.OnDataverseRowDeleted.Disabled': string(!enableSeparateRowTriggers)
+  'AzureWebJobs.OnDataverseRowAdded.Disabled': toLower(string(!enableSeparateRowTriggers))
+  'AzureWebJobs.OnDataverseRowModified.Disabled': toLower(string(!enableSeparateRowTriggers))
+  'AzureWebJobs.OnDataverseRowDeleted.Disabled': toLower(string(!enableSeparateRowTriggers))
 }

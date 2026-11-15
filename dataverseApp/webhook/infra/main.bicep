@@ -20,7 +20,10 @@ param dataverseEnvironmentUrl string
 param dataverseTableName string = 'account'
 param enableSeparateRowTriggers bool = false
 @minLength(1)
+@description('Table Name selector returned by GetTables for the selected environment.')
 param dataverseEntitySetName string = 'accounts'
+@description('Exact GetScopeFilters selector; required when separate row triggers are enabled.')
+param dataverseRowScope string = ''
 param enableActionTrigger bool = false
 param eventCatalog string = ''
 param eventCategory string = ''
@@ -153,10 +156,10 @@ var allAppSettings = {
   APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
   APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
   ConnectorNamespace__credential: 'managedidentity'
-  'AzureWebJobs.OnDataverseActionPerformed.Disabled': string(!enableActionTrigger)
-  'AzureWebJobs.OnDataverseRowAdded.Disabled': string(!enableSeparateRowTriggers)
-  'AzureWebJobs.OnDataverseRowModified.Disabled': string(!enableSeparateRowTriggers)
-  'AzureWebJobs.OnDataverseRowDeleted.Disabled': string(!enableSeparateRowTriggers)
+  'AzureWebJobs.OnDataverseActionPerformed.Disabled': toLower(string(!enableActionTrigger))
+  'AzureWebJobs.OnDataverseRowAdded.Disabled': toLower(string(!enableSeparateRowTriggers))
+  'AzureWebJobs.OnDataverseRowModified.Disabled': toLower(string(!enableSeparateRowTriggers))
+  'AzureWebJobs.OnDataverseRowDeleted.Disabled': toLower(string(!enableSeparateRowTriggers))
 }
 
 module functionApp 'br/public:avm/res/web/site:0.22.0' = {
@@ -226,6 +229,7 @@ output dataverseFunctionName string = 'OnDataverseRowChanged'
 output dataverseEnvironmentUrl string = dataverseEnvironmentUrl
 output dataverseTableName string = dataverseTableName
 output dataverseEntitySetName string = dataverseEntitySetName
+output dataverseRowScope string = dataverseRowScope
 output enableSeparateRowTriggers bool = enableSeparateRowTriggers
 output enableActionTrigger bool = enableActionTrigger
 output eventCatalog string = eventCatalog

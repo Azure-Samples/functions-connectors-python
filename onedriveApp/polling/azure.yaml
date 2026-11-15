@@ -7,6 +7,17 @@ services:
     project: .
     language: python
 hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: |
+        $python = if ($env:PYTHON) { $env:PYTHON } else { 'python' }
+        & $python ./infra/scripts/validate-folder.py
+        if ($LASTEXITCODE -ne 0) { throw 'OneDrive folder ID validation failed.' }
+    posix:
+      shell: sh
+      run: '"${PYTHON:-python}" ./infra/scripts/validate-folder.py'
+    continueOnError: false
   postdeploy:
     windows:
       shell: pwsh

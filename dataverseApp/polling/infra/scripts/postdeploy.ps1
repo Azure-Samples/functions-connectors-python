@@ -3,6 +3,7 @@ param([switch] $ForceLocalSettings)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'deployment-helpers.ps1')
+. (Join-Path $PSScriptRoot 'row-config.ps1')
 Get-Command az, azd -ErrorAction Stop | Out-Null
 $extension = az extension show --name connector-namespace --query name -o tsv 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $extension) { throw 'Install the connector-namespace Azure CLI extension before running this script.' }
@@ -24,10 +25,7 @@ $localValues = @{
 }
 $optional = @(
     @{ functionName = 'OnDataverseActionPerformed'; operationName = 'BusinessEventsTrigger' }
-    @{ functionName = 'OnDataverseRowAdded'; operationName = 'GetOnNewItems_V2' }
-    @{ functionName = 'OnDataverseRowModified'; operationName = 'GetOnUpdatedItems_V2' }
-    @{ functionName = 'OnDataverseRowDeleted'; operationName = 'GetOnDeletedItems_V2' }
-)
+) + @(Get-DataverseSeparateRowTriggers)
 foreach ($functionName in @('OnDataverseRowChanged') + @($optional.functionName)) {
     $name = "${functionName}TriggerConfigName"
     if ([string]$settings.$name -cne "dataverse-$($functionName.ToLowerInvariant())") { throw "Missing or invalid $name in triggerConfigSettings." }
@@ -35,8 +33,9 @@ foreach ($functionName in @('OnDataverseRowChanged') + @($optional.functionName)
 }
 foreach ($trigger in $optional) {
     $name = "AzureWebJobs.$($trigger.functionName).Disabled"
-    if ([string]$settings.$name -cnotin @('true', 'false')) { throw "Missing or invalid $name in triggerConfigSettings." }
-    $localValues[$name] = [string]$settings.$name
+    $disabled = ([string]$settings.$name).ToLowerInvariant()
+    if ($disabled -cnotin @('true', 'false')) { throw "Missing or invalid $name in triggerConfigSettings." }
+    $localValues[$name] = $disabled
 }
 $actionSelectors = [ordered]@{ organization = $context.organization }
 if ($localValues['AzureWebJobs.OnDataverseActionPerformed.Disabled'] -ceq 'false') {
@@ -47,20 +46,33 @@ if ($localValues['AzureWebJobs.OnDataverseActionPerformed.Disabled'] -ceq 'false
         $actionSelectors[$pair[0]] = $value
     }
 }
-$actionToCreate = $null
+$rowParameters = if (@(Get-DataverseSeparateRowTriggers | Where-Object {
+    $localValues["AzureWebJobs.$($_.functionName).Disabled"] -ceq 'false'
+}).Count -gt 0) { @(Get-DataverseRowParameters $outputs) }
+$configurationsToCreate = @()
 $inventory = @(Get-DataverseConfigurations $collectionUri)
+foreach ($trigger in Get-DataverseSeparateRowTriggers) {
+    $name = $localValues["$($trigger.functionName)TriggerConfigName"]
+    $existing = @($inventory | Where-Object { $_.config.name -ieq $name -or $_.config.id -ieq "$($context.namespaceId)/triggerConfigs/$name" })
+    if ($existing.Count -gt 1) { throw "Ambiguous Dataverse configuration '$name'." }
+    if ($existing.Count -eq 1) { Assert-DataverseRowConfig $existing[0].config $trigger $outputs Poll }
+}
 foreach ($trigger in $optional) {
     $name = $localValues["$($trigger.functionName)TriggerConfigName"]
     $desiredState = if ($localValues["AzureWebJobs.$($trigger.functionName).Disabled"] -ceq 'true') { 'Disabled' } else { 'Enabled' }
     $existing = @($inventory | Where-Object { $_.config.name -ieq $name -or $_.config.id -ieq "$($context.namespaceId)/triggerConfigs/$name" })
     if ($existing.Count -gt 1) { throw "Ambiguous Dataverse configuration '$name'." }
     if ($existing.Count -eq 0) {
-        if ($trigger.operationName -ceq 'BusinessEventsTrigger' -and $desiredState -ceq 'Enabled') {
-            Protect-DataverseActionRegistration $context $journal $null $outputs -BeforeCreate
-            $actionToCreate = $name
-            continue
+        if ($desiredState -ceq 'Enabled') {
+            $parameters = if ($trigger.operationName -ceq 'BusinessEventsTrigger') {
+                Protect-DataverseActionRegistration $context $journal $null $outputs -BeforeCreate
+                @($actionSelectors.Keys | ForEach-Object { @{ name = $_; value = $actionSelectors[$_] } })
+            } else { $rowParameters }
+            $configurationsToCreate += @{
+                name = $name; functionName = $trigger.functionName
+                operationName = $trigger.operationName; parameters = $parameters
+            }
         }
-        if ($desiredState -eq 'Enabled') { throw "Selected Dataverse configuration '$name' is missing. Run azd provision first." }
         continue
     }
     $config = $existing[0].config
@@ -73,15 +85,6 @@ foreach ($trigger in $optional) {
             foreach ($parameter in $config.properties.parameters) { $currentSelectors[$parameter.name] = [string]$parameter.value }
             Assert-DataverseActionContext $actionSelectors $currentSelectors
         }
-    } else {
-        if ([string]::IsNullOrWhiteSpace([string]$outputs.dataverseEntitySetName)) { throw 'Missing dataverseEntitySetName output.' }
-        $expected = @{ dataset = $context.organization; table = [string]$outputs.dataverseEntitySetName }
-        $selectors = @{}
-        foreach ($parameter in $config.properties.parameters) {
-            if ($selectors.ContainsKey($parameter.name)) { throw 'Ambiguous Dataverse row selectors.' }
-            $selectors[$parameter.name] = [string]$parameter.value
-        }
-        Assert-DataverseActionContext $expected $selectors
     }
     if ($config.properties.state -ceq $desiredState) { continue }
     $node = $existing[0].node
@@ -117,33 +120,33 @@ foreach ($trigger in $optional) {
 }
 Write-LocalSettings $localValues -Force:$ForceLocalSettings
 Connect-Dataverse $outputs
-if ($null -ne $actionToCreate) {
-    $parameters = @($actionSelectors.Keys | ForEach-Object { @{ name = $_; value = $actionSelectors[$_] } })
+foreach ($registration in $configurationsToCreate) {
+    $name = $registration.name
     $body = @{ properties = @{
         connectionDetails = @{ connectionName = $context.connectionName; connectorName = 'commondataservice' }
-        deliveryMode = 'Poll'; operationName = $context.operationName; parameters = $parameters
+        deliveryMode = 'Poll'; operationName = $registration.operationName; parameters = $registration.parameters
         state = 'Enabled'; type = 'NotSpecified'
-        description = 'Current Dataverse action-performed operation with Poll delivery.'
+        description = 'Portal Dataverse subscription operation with Poll delivery.'
         metadata = @{ destinationType = 'functionApp'; functionAppName = $outputs.functionAppName
             functionAppResourceGroup = $outputs.resourceGroupName; functionAppSubscriptionId = $outputs.AZURE_SUBSCRIPTION_ID
-            functionName = $context.functionName }
+            functionName = $registration.functionName }
     } }
     $bodyFile = Join-Path ([IO.Path]::GetTempPath()) "dataverse-action-$([guid]::NewGuid().ToString('N')).json"
     $owned = $false; $failure = $null
     try {
         Write-PrivateJson $bodyFile ($body | ConvertTo-Json -Depth 10)
         $owned = $true
-        az rest --method put --url "$collectionUri/${actionToCreate}?api-version=2026-05-01-preview" --body "@$bodyFile" -o none 2>$null
-        if ($LASTEXITCODE -ne 0) { throw 'Could not create the guarded Dataverse action configuration; source details were not logged.' }
-        $raw = az rest --method get --url "$collectionUri/${actionToCreate}?api-version=2026-05-01-preview" `
+        az rest --method put --url "$collectionUri/${name}?api-version=2026-05-01-preview" --body "@$bodyFile" -o none 2>$null
+        if ($LASTEXITCODE -ne 0) { throw "Could not create guarded Dataverse configuration '$name'; source details were not logged." }
+        $raw = az rest --method get --url "$collectionUri/${name}?api-version=2026-05-01-preview" `
             --query '{state:properties.state,deliveryMode:properties.deliveryMode}' -o json 2>$null
-        if ($LASTEXITCODE -ne 0) { throw 'Could not verify the Dataverse action configuration after creation.' }
+        if ($LASTEXITCODE -ne 0) { throw "Could not verify Dataverse configuration '$name' after creation." }
         $created = ($raw -join "`n") | ConvertFrom-Json
-        if ($created.state -cne 'Enabled' -or $created.deliveryMode -cne 'Poll') { throw 'Dataverse action state or Poll delivery readback differs.' }
+        if ($created.state -cne 'Enabled' -or $created.deliveryMode -cne 'Poll') { throw 'Dataverse configuration state or Poll delivery readback differs.' }
     } catch { $failure = $_; throw } finally {
         try { if ($owned -and [IO.File]::Exists($bodyFile)) { [IO.File]::Delete($bodyFile) } } catch {
-            if ($null -eq $failure) { throw 'Could not clean private Dataverse action staging file.' }
-            Write-Warning 'Could not clean private action staging file; original failure preserved.'
+            if ($null -eq $failure) { throw 'Could not clean private Dataverse registration staging file.' }
+            Write-Warning 'Could not clean private registration staging file; original failure preserved.'
         }
     }
 }

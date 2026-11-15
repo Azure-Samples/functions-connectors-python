@@ -104,6 +104,28 @@ if [[ "$currentStatus" != 'Connected' ]]; then
   fi
 fi
 
+assert_onedrive_folder_id() {
+  local normalized
+  normalized=$(printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '[:upper:]' '[:lower:]') || return 1
+  if [[ -z "$normalized" || "$normalized" == root || "$normalized" == null ]]; then
+    echo "Use a connector-returned OneDrive folder ID. Literal 'root' fails trigger evaluation with 'Invalid fileId'; select the top-level folder to resolve its real ID." >&2
+    return 1
+  fi
+}
+
+resolve_root_folder_id() {
+  local rootId
+  rootId=$(az connector-namespace connection invoke \
+    --subscription "$subscriptionId" -g "$resourceGroupName" --namespace "$connectorNamespaceName" \
+    --connection-name "$onedriveConnectionName" \
+    --request '{"method":"GET","path":"/datasets/default/GetFileByPath","queries":{"path":"/"}}' \
+    --query 'response.body.Id' -o tsv 2>/dev/null) ||
+    { echo 'Could not resolve the OneDrive root folder ID from the connection.' >&2; return 1; }
+  rootId="${rootId%$'\r'}"
+  assert_onedrive_folder_id "$rootId" || return 1
+  printf '%s' "$rootId"
+}
+
 select_onedrive_folder() {
   local folderIds=('root') folderPaths=('/')
   local depth=0 listingPath listing folders folderCount choice manual encodedId
@@ -138,7 +160,12 @@ select_onedrive_folder() {
     printf '%s' "$folders" | jq -r 'to_entries[] | "[\(.key + 1)] \(.value.Name)"' >&2 || return 1
     read -r -p 'Choose a folder: ' choice || { echo 'No folder selection available. Set ONEDRIVE_FOLDER_ID.' >&2; return 1; }
     case "$choice" in
-      0) printf '%s' "${folderIds[$depth]}"; return ;;
+      0)
+        if (( depth == 0 )); then resolve_root_folder_id; return $?; fi
+        assert_onedrive_folder_id "${folderIds[$depth]}" || return 1
+        printf '%s' "${folderIds[$depth]}"
+        return
+        ;;
       u)
         if (( depth == 0 )); then echo 'Already at root.' >&2; return 1; fi
         depth=$((depth - 1))
@@ -149,6 +176,7 @@ select_onedrive_folder() {
           echo 'A connector folder identifier is required.' >&2
           return 1
         fi
+        assert_onedrive_folder_id "$manual" || return 1
         printf '%s' "$manual"
         return
         ;;
@@ -170,9 +198,10 @@ if [[ -z "$onedriveFolderId" ]]; then
   onedriveFolderId=$(select_onedrive_folder)
 fi
 if [[ ! "$onedriveFolderId" =~ [^[:space:]] || "$onedriveFolderId" == 'null' ]]; then
-  echo 'Set ONEDRIVE_FOLDER_ID to a connector folder identifier or root, not a display path.' >&2
+  echo 'Set ONEDRIVE_FOLDER_ID to a connector-returned folder identifier, not a display path or literal root.' >&2
   exit 1
 fi
+assert_onedrive_folder_id "$onedriveFolderId"
 azd env set ONEDRIVE_FOLDER_ID "$onedriveFolderId" >/dev/null
 
 existingTriggers=$(az connector-namespace trigger list -g "$resourceGroupName" --namespace "$connectorNamespaceName" --query '[].name' -o json 2>/dev/null)

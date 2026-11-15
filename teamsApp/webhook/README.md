@@ -1,110 +1,78 @@
-# Microsoft Teams webhook events (Python)
+# Microsoft Teams webhook triggers (Python)
 
-This app covers all eleven events in the [Teams sample index](../README.md). Four
-SDK-typed events are configured by default; seven raw-string events require opt-in
-source scopes. Typed handlers log trigger names and actual decoded item counts;
-raw handlers log only event names. No customer payload fields are logged.
+Connector Namespace sends Teams events to the Functions connector callback, authenticated with the `connector_extension` system key. Four typed events are enabled by default; seven raw-string events require opt-in.
 
-The [polling app](../polling) has matching handler code. Webhook callbacks use the
-connector extension system key; operation names prefixed `Webhook` can also be
-used with Poll delivery and do not determine the Functions delivery mode.
+| Function / connector operation | Binding | Selection |
+| --- | --- | --- |
+| [`OnNewChannelMessage`](https://learn.microsoft.com/connectors/teams/#when-a-new-channel-message-is-added) | `List[teams.ChatMessage]` | Default |
+| [`OnNewChannelMessageMentioningMe`](https://learn.microsoft.com/connectors/teams/#when-i-am-mentioned-in-a-channel-message) | `List[teams.ChatMessage]` | Default |
+| [`OnGroupMembershipAdd`](https://learn.microsoft.com/connectors/teams/#when-a-new-team-member-is-added) | `List[teams.OnGroupMemberChangeResponse]` | Default |
+| [`OnGroupMembershipRemoval`](https://learn.microsoft.com/connectors/teams/#when-a-new-team-member-is-removed) | `List[teams.OnGroupMemberChangeResponse]` | Default |
+| [`WebhookChatMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-chat-message-is-added) | `str` | Opt-in |
+| [`WebhookNewMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-message-is-added-to-a-chat-or-channel) | `str` | Opt-in |
+| [`WebhookAtMentionTrigger`](https://learn.microsoft.com/connectors/teams/#when-i'm-@mentioned) | `str` | Opt-in |
+| [`WebhookKeywordTrigger`](https://learn.microsoft.com/connectors/teams/#when-keywords-are-mentioned) | `str` | Opt-in |
+| [`WebhookMessageReactionTrigger`](https://learn.microsoft.com/connectors/teams/#when-someone-reacted-to-a-message-in-chat) | `str` | Opt-in |
+| [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available) | `str` | Opt-in |
+| [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `str` | Opt-in |
+
+Handlers log event names and typed counts, not customer content.
+
+This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
 ## Prerequisites
 
-- Azure Developer CLI, Azure CLI 2.75.0+, and the
-  [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- **PowerShell 7.3+**, including when invoking the Bash wrapper.
-- A Teams account with permission to access the selected team/channel and authorize
-  the connection. Additional events may require meeting licenses and policies.
-- A supported Python runtime; deployment uses Python 3.14. Requirements select
-  `azure-functions>=2.4.0b1` on Python 3.13+, or `azure-functions>=1.27.0b1` for older
-  supported versions, plus `azurefunctions-extensions-connectors>=1.0.0b4`.
-- On Python 3.12 and older, `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in the
-  deployed settings and local example.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- PowerShell 7.3+ on every platform, including when using the Bash wrapper.
+- A Teams account with access to the selected team/channel and permission to authorize the connection. Optional events may require additional scopes, licenses, and policies.
+- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions, and `azurefunctions-extensions-connectors>=1.0.0b4`. The requirements file selects the SDK family.
 
-## Deploy
+For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it. Install the version-specific packages from `requirements.txt`.
 
-From the repository root:
+## Deploy to Azure
 
 ```powershell
-cd teamsApp/webhook
 az login
 azd auth login
 azd env new teams-webhook
 azd up
 ```
 
-Use a different environment name from polling. The hook authorizes the Teams
-connection and prompts for missing team/channel selections. Alternatively set
-`TEAMS_GROUP_ID` to the group object ID and `TEAMS_CHANNEL_ID` to the URL-decoded
-channel ID before deployment. Display names are not IDs.
+The hook authorizes the Teams connection and prompts for missing team/channel selections. Alternatively, set `TEAMS_GROUP_ID` to the group object ID and `TEAMS_CHANNEL_ID` to the URL-decoded channel ID before deployment. The hook registers callbacks using the deployed app's actual hostname and connector extension system key.
 
-Deployment creates a Python 3.14 Linux Flex Consumption app, storage, system-assigned identities,
-monitoring, a Connector Namespace, and an OAuth connection. The hook configures four
-baseline subscriptions plus explicitly selected optional events, targeting the
-actual Function App hostname. Callbacks authenticate with the **`connector_extension`
-system key**, not an ordinary function key. Temporary callback files are cleaned up;
-CLI failures stop setup without printing secret command output.
+## Optional configuration
 
-After app creation, a separate module grants its identity storage roles and
-Monitoring Metrics Publisher, avoiding a storage/app dependency cycle. Webhook-only
-reception needs no Function/developer or namespace connection access policy.
-Native Functions platform telemetry uses `APPLICATIONINSIGHTS_CONNECTION_STRING`
-and `APPLICATIONINSIGHTS_AUTHENTICATION_STRING=Authorization=AAD`; this Python
-sample adds no .NET worker telemetry setup. Local settings omit Azure identity settings.
+Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the namespace or monitoring region. To enable optional events, copy selected entries from `infra/additional-triggers.example.json` into `infra/additional-triggers.json` and replace placeholders with actual connector values:
 
-`CONNECTOR_NAMESPACE_LOCATION` defaults to `westcentralus`; `TELEMETRY_LOCATION`
-defaults to `eastus2`. Rerun setup with `azd hooks run postdeploy`. Existing Connected
-consent and local settings are preserved. Local settings use private atomic staging;
-links and directories are rejected. To regenerate local settings after selection
-changes, use `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings`.
-
-## Opt-in events
-
-`infra/additional-triggers.json` defaults to `[]`. Copy only authorized entries
-from `infra/additional-triggers.example.json` and replace all placeholders:
-
-| Operation | Required source parameters |
+| Operation | Required parameters |
 | --- | --- |
-| `WebhookChatMessageTrigger` | None; **all chats of the connection user** |
-| `WebhookNewMessageTrigger`, `WebhookAtMentionTrigger` | `threadType`, dynamic `requestBody` |
-| `WebhookKeywordTrigger` | `threadType`, `$search`, dynamic `requestBody` |
-| `WebhookMessageReactionTrigger` | `reactionKey`, `frequency`, `runningPolicy`, `threadType`, dynamic `requestBody` |
-| `RecordingTrigger`, `TranscriptTrigger` | `scopeType`, dynamic `body`; appropriate meeting policies/licenses |
+| [`WebhookChatMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-chat-message-is-added) | None; covers **all chats of the connected user**. |
+| [`WebhookNewMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-message-is-added-to-a-chat-or-channel), [`WebhookAtMentionTrigger`](https://learn.microsoft.com/connectors/teams/#when-i'm-@mentioned) | `threadType` and dynamic `requestBody`. |
+| [`WebhookKeywordTrigger`](https://learn.microsoft.com/connectors/teams/#when-keywords-are-mentioned) | `threadType`, `$search`, and dynamic `requestBody`. |
+| [`WebhookMessageReactionTrigger`](https://learn.microsoft.com/connectors/teams/#when-someone-reacted-to-a-message-in-chat) | `reactionKey`, `frequency`, `runningPolicy`, `threadType`, and dynamic `requestBody`. |
+| [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available), [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `scopeType` and dynamic `body`; meeting policies and licenses apply. |
 
-Use exact operation and parameter casing, actual source scopes/enums, and correct
-JSON types. Do not copy tokens or keys. Validation rejects duplicates, unsupported
-names, missing scopes, empty values, and placeholders. Broad chat or meeting scopes
-are never enabled implicitly; the service validates the dynamic schema and permissions.
+Preserve operation/parameter casing and JSON types. Run `azd up` to apply the selection. Removing an entry does not delete its existing namespace config; explicitly disable or delete the sample-owned source subscription to stop collection. Existing local settings are preserved; use `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace them after changing selection.
 
-Run `azd up` to apply the selection. Unselected optional listeners are disabled.
-Reruns update selected named registrations in place, without delete/recreate.
-Removing an entry does **not** delete an existing ARM config: disable/delete the
-sample-owned source subscription explicitly to stop collection. Update preserved
-local disabled flags or regenerate settings after changing selection.
+## Local development
 
-## Run locally
+- Start Azurite separately.
+- Use the generated local settings or copy `local.settings.example.json` to `local.settings.json` if absent:
 
-Create and activate a virtual environment and install requirements. Use generated
-local settings, or copy `local.settings.example.json` if no private file exists.
-Install Functions Core Tools v4 and Azurite; start Azurite separately and run
-`func start --enableAuth` from this folder. Core Tools bypasses key authentication
-locally by default; enable it before exposing a public tunnel.
+```powershell
+python -m venv .venv
+# Activate .venv for your shell.
+python -m pip install -r requirements.txt
+func start --enableAuth
+```
 
-Real local events require a secure public HTTPS tunnel and callback configs
-targeting the local function names. Use the **local** connector extension system
-key. The postdeploy hook registers Azure callbacks, not localhost. Use separate
-configs or rerun the hook to restore deployed callbacks after manual changes.
-The polling app avoids the need for a public tunnel.
+- To receive local events, expose the host through a secure public HTTPS tunnel and configure separate callbacks using the local function names and local `connector_extension` system key.
+- Core Tools bypasses key checks by default; enable authentication before exposing the host.
+- The hook targets Azure, not localhost; rerun it to restore deployed callbacks after manual changes.
 
 ## Verify and clean up
 
-Check Connected consent, Enabled selected configs, and successful source registration
-in [Connector Namespaces](https://connectors.azure.com/). Post a root channel message
-(not a reply), mention the connection user, and add/remove a test member. Verify
-successful invocations with trigger names and actual item counts. Optional events
-require their corresponding action, source scope, and permissions.
+Check Connected consent, enabled configs, and successful source registration in [Connector Namespaces](https://connectors.azure.com/). Post a root channel message, mention the connection user, and add/remove a test team member. Check successful invocations and item counts; optional events require their selected source actions.
 
-Delivery may repeat; these samples do not deduplicate. Never commit tokens, callback
-keys, or private settings. Disable/remove only test subscriptions and run
-`azd down --purge` from this folder when finished.
+Disable or remove only your test subscriptions, then run `azd down --purge` from this folder. Never commit callback keys, credentials, or local settings.

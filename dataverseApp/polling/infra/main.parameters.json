@@ -11,6 +11,7 @@
     "dataverseTableName": { "value": "${DATAVERSE_TABLE_NAME=account}" },
     "enableSeparateRowTriggers": { "value": "${DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS=false}" },
     "dataverseEntitySetName": { "value": "${DATAVERSE_ENTITY_SET_NAME=accounts}" },
+    "dataverseRowScope": { "value": "${DATAVERSE_ROW_SCOPE=}" },
     "enableActionTrigger": { "value": "${DATAVERSE_ENABLE_ACTION_TRIGGER=false}" },
     "eventCatalog": { "value": "${DATAVERSE_EVENT_CATALOG=}" },
     "eventCategory": { "value": "${DATAVERSE_EVENT_CATEGORY=}" },

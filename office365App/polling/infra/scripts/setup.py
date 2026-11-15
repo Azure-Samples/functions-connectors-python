@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-"""Shared, standard-library-only Office365 deployment hooks; Azure calls are explicit.
+"""App-local, standard-library-only Office365 deployment hooks; Azure calls are explicit.
 
 Importing this module never reads credentials or calls Azure. Both shell entry
 points use this implementation so JSON quoting and preservation rules agree.

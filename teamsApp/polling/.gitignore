@@ -1,5 +1,6 @@
 .azure/
 .venv/
+.python_packages/
 __pycache__/
 *.py[cod]
 local.settings.json
@@ -7,3 +8,7 @@ local.settings.json
 .local-settings-*.json
 .trigger-parameters-*.json
 .notification-details-*.json
+__azurite_db*
+__blobstorage__/
+__queuestorage__/
+.azurite*

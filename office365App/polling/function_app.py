@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import logging
+from typing import List
 
 import azure.functions as func
 import azurefunctions.extensions.connectors.office365 as office365
@@ -19,7 +20,7 @@ app = func.FunctionApp()
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnNewEmailTriggerConfigName%",
 )
-def on_new_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
+def on_new_email(emails: List[office365.GraphClientReceiveMessage]) -> None:
     """Triggered when a new email arrives in Office 365."""
     logging.info("Received OnNewEmail trigger (%d items)", len(emails))
 
@@ -34,7 +35,7 @@ def on_new_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnFlaggedEmailTriggerConfigName%",
 )
-def on_flagged_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
+def on_flagged_email(emails: List[office365.GraphClientReceiveMessage]) -> None:
     """Triggered when an email is flagged in Office 365."""
     logging.info("Received OnFlaggedEmail trigger (%d items)", len(emails))
 
@@ -49,7 +50,7 @@ def on_flagged_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnNewMentionMeEmailTriggerConfigName%",
 )
-def on_new_mention_me_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
+def on_new_mention_me_email(emails: List[office365.GraphClientReceiveMessage]) -> None:
     """Triggered when a new email mentioning the current user arrives."""
     logging.info("Received OnNewMentionMeEmail trigger (%d items)", len(emails))
 
@@ -64,7 +65,7 @@ def on_new_mention_me_email(emails: list[office365.GraphClientReceiveMessage]) -
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnNewCalendarEventTriggerConfigName%",
 )
-def on_new_calendar_event(events: list[office365.GraphCalendarEventClientReceive]) -> None:
+def on_new_calendar_event(events: List[office365.GraphCalendarEventClientReceive]) -> None:
     """Triggered when a new calendar event is created in Office 365."""
     logging.info("Received OnNewCalendarEvent trigger (%d items)", len(events))
 
@@ -79,7 +80,7 @@ def on_new_calendar_event(events: list[office365.GraphCalendarEventClientReceive
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnUpcomingEventTriggerConfigName%",
 )
-def on_upcoming_event(events: list[office365.GraphCalendarEventClientReceive]) -> None:
+def on_upcoming_event(events: List[office365.GraphCalendarEventClientReceive]) -> None:
     """Triggered when an upcoming calendar event is about to start."""
     logging.info("Received OnUpcomingEvent trigger (%d items)", len(events))
 
@@ -90,7 +91,7 @@ def on_upcoming_event(events: list[office365.GraphCalendarEventClientReceive]) -
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnCalendarUpdatedItemsTriggerConfigName%",
 )
-def on_calendar_updated_items(events: list[office365.GraphCalendarEventClientReceive]) -> None:
+def on_calendar_updated_items(events: List[office365.GraphCalendarEventClientReceive]) -> None:
     """Count modified calendar events without logging their content."""
     logging.info("Received OnCalendarUpdatedItems trigger (%d items)", len(events))
 
@@ -101,6 +102,6 @@ def on_calendar_updated_items(events: list[office365.GraphCalendarEventClientRec
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnSharedMailboxNewEmailTriggerConfigName%",
 )
-def on_shared_mailbox_new_email(emails: list[office365.GraphClientReceiveMessage]) -> None:
+def on_shared_mailbox_new_email(emails: List[office365.GraphClientReceiveMessage]) -> None:
     """Count shared messages when the optional listener is enabled."""
     logging.info("Received OnSharedMailboxNewEmail trigger (%d items)", len(emails))

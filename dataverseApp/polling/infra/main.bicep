@@ -20,7 +20,10 @@ param dataverseEnvironmentUrl string
 param dataverseTableName string = 'account'
 param enableSeparateRowTriggers bool = false
 @minLength(1)
+@description('Table Name selector returned by GetTables for the selected environment.')
 param dataverseEntitySetName string = 'accounts'
+@description('Exact GetScopeFilters selector; required when separate row triggers are enabled.')
+param dataverseRowScope string = ''
 param enableActionTrigger bool = false
 param eventCatalog string = ''
 param eventCategory string = ''
@@ -156,7 +159,6 @@ module pollTriggers './poll-triggers.bicep' = {
     environmentUrl: dataverseEnvironmentUrl
     tableName: dataverseTableName
     enableSeparateRowTriggers: enableSeparateRowTriggers
-    entitySetName: dataverseEntitySetName
     enableActionTrigger: enableActionTrigger
   }
 }
@@ -239,6 +241,7 @@ output dataverseFunctionName string = 'OnDataverseRowChanged'
 output dataverseEnvironmentUrl string = dataverseEnvironmentUrl
 output dataverseTableName string = dataverseTableName
 output dataverseEntitySetName string = dataverseEntitySetName
+output dataverseRowScope string = dataverseRowScope
 output eventCatalog string = eventCatalog
 output eventCategory string = eventCategory
 output eventTable string = eventTable

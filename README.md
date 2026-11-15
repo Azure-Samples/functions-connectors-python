@@ -4,15 +4,9 @@ This repository contains Python samples for the **Connector Namespace** integrat
 
 ## What are Functions connectors?
 
-Azure Functions integrates with the managed connectors platform that backs Logic Apps and Power Platform, giving your functions:
+Azure Functions integrates with the managed connectors platform that backs Logic Apps and Power Platform:
 
-- **Connector triggers** — a function runs when an event occurs in an external service (new email in Office 365, file added to SharePoint or OneDrive, message posted to Microsoft Teams, and many more). The runtime exposes a `connector_trigger` binding that receives webhook callbacks from the Connector Namespace.
-- **Connector SDK actions** — function code calls connector operations through strongly-typed clients or through dynamic payload models for any connector.
-
-The connector platform handles webhook registration, OAuth flows, token refresh, and retry.
-
-> [!NOTE]
-> Connectors in Azure Functions are in **public preview**.
+- **Connector triggers** — run a function when an event occurs in an external service, such as a new email, file, or Teams message.
 
 ## Prerequisites
 
@@ -35,38 +29,39 @@ The connector platform handles webhook registration, OAuth flows, token refresh,
 
 - `jq` (for bash post-deploy scripts on macOS/Linux)
 
-
 ## Getting-started samples
 
-Follow each connector's guide for deployment or setup. When a guide offers separate polling and webhook apps, choose a delivery mode and work from that app's folder. Some samples use existing resources rather than provisioning them with `azd up`.
+Follow each connector's guide for deployment or setup. Each `polling` or `webhook` folder is an independent app; some samples use existing Azure resources rather than provisioning them with `azd up`.
 
 The included deployment templates use Python 3.14 on Flex Consumption.
 
 | Guide | Connector |
-|---|---|
-| [Azure Blob](./azureblobApp/README.md) | Azure Blob Storage |
-| [Dataverse](./dataverseApp/README.md) | Microsoft Dataverse (Common Data Service) |
-| [Kusto](./kustoApp/README.md) | Azure Data Explorer |
-| [Office 365](./office365App/README.md) | Office 365 Outlook |
-| [OneDrive](./onedriveApp/README.md) | OneDrive for Business |
-| [SharePoint](./sharepointApp/README.md) | SharePoint Online |
-| [Teams](./teamsApp/README.md) | Microsoft Teams |
-| [Generic](./genericApp/README.md) | Any connector, using raw string payloads |
+| --- | --- |
+| [Office 365](./office365App/README.md) | [Office 365 Outlook](https://learn.microsoft.com/connectors/office365/) |
+| [SharePoint](./sharepointApp/README.md) | [SharePoint Online](https://learn.microsoft.com/connectors/sharepointonline/) |
+| [OneDrive](./onedriveApp/README.md) | [OneDrive for Business](https://learn.microsoft.com/connectors/onedriveforbusiness/) |
+| [Teams](./teamsApp/README.md) | [Microsoft Teams](https://learn.microsoft.com/connectors/teams/) |
+| [Dataverse](./dataverseApp/README.md) | [Microsoft Dataverse (Common Data Service)](https://learn.microsoft.com/connectors/commondataservice/) |
+| [Azure Blob](./azureblobApp/README.md) | [Azure Blob Storage](https://learn.microsoft.com/connectors/azureblob/) |
+| [Generic](./genericApp/README.md) | [Any connector](https://learn.microsoft.com/connectors/), using raw string payloads |
+| [Kusto](./kustoApp/README.md) | [Azure Data Explorer](https://learn.microsoft.com/connectors/kusto/) |
+
+## More triggers and operations
+
+See the [Operations to Azure Functions Signature Mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md) for supported connector triggers and their Python signatures.
 
 ## The packages these samples use
 
 | Package | Role |
-|---|---|
-| [`azure-functions`](https://pypi.org/project/azure-functions/) | The Functions Python SDK. Provides `@app.connector_trigger` and the broader bindings surface. |
-| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | Supported connector trigger rich SDK-type bindings backed by `azure-connectors` models. |
+| --- | --- |
+| [`azure-functions`](https://pypi.org/project/azure-functions/) | The Azure Functions Python SDK. |
+| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | Connector trigger bindings. |
 
-
-Install the requirements from the selected app's folder. Each app specifies the package versions and Python version markers it needs; raw-payload samples may not need the rich-binding extension.
-
+Install requirements from the selected app's folder.
 
 ## Related repos
 
 | Repo | Purpose |
-|---|---|
+| --- | --- |
 | [Azure/connectors-python-SDK](https://github.com/Azure/connectors-python-SDK) | `azure-connectors` — Python SDK for Azure Connectors. |
 | [Azure/azure-functions-python-extensions](https://github.com/Azure/azure-functions-python-extensions) | `azurefunctions-extensions-connectors` — the binding extension consumed by these samples. |

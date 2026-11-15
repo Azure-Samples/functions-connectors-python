@@ -163,14 +163,19 @@ function Select-OneDriveFolderInteractive {
 
         $picked = Select-FromList -Title 'Choose an action:' -Items $choices -LabelProperty 'display'
         switch ($picked.action) {
-            'pick' { return $picked.targetId }
+            'pick' {
+                if ($picked.targetId -eq 'root') { return Get-OneDriveRootFolderId }
+                Assert-OneDriveFolderId $picked.targetId
+                return $picked.targetId
+            }
             'keep' { return $picked.targetId }
             'up' { [void] $stack.Pop() }
             'down' { $stack.Push($picked.target) }
             'manual' {
                 $manual = Read-Host 'OneDrive folder id'
                 if (-not [string]::IsNullOrWhiteSpace($manual)) {
-                    return $manual
+                    Assert-OneDriveFolderId $manual
+                    return $manual.Trim()
                 }
                 throw 'A connector folder identifier is required.'
             }
@@ -179,8 +184,38 @@ function Select-OneDriveFolderInteractive {
     }
 }
 
+function Assert-OneDriveFolderId {
+    param([string] $FolderId)
+    if ([string]::IsNullOrWhiteSpace($FolderId) -or $FolderId.Trim().ToLowerInvariant() -in @('root', 'null')) {
+        throw "Use a connector-returned OneDrive folder ID. Literal 'root' fails trigger evaluation with 'Invalid fileId'; select the top-level folder to resolve its real ID."
+    }
+}
+
+function Get-OneDriveRootFolderId {
+    $requestFile = Join-Path ([IO.Path]::GetTempPath()) "onedrive-root-$([guid]::NewGuid()).json"
+    $owned = $false
+    try {
+        $stream = New-PrivateStagingStream $requestFile
+        $owned = $true
+        try {
+            $bytes = [Text.UTF8Encoding]::new($false).GetBytes('{"method":"GET","path":"/datasets/default/GetFileByPath","queries":{"path":"/"}}')
+            $stream.Write($bytes, 0, $bytes.Length)
+        } finally { $stream.Dispose() }
+        $rootId = az connector-namespace connection invoke `
+            --subscription $subscriptionId -g $resourceGroupName --namespace $connectorNamespaceName `
+            --connection-name $onedriveConnectionName --request "@$requestFile" `
+            --query 'response.body.Id' -o tsv 2>$null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the OneDrive root folder ID from the connection.' }
+        Assert-OneDriveFolderId $rootId
+        return $rootId.Trim()
+    } finally {
+        if ($owned -and [IO.File]::Exists($requestFile)) { [IO.File]::Delete($requestFile) }
+    }
+}
+
 Write-Host ""
 if ($onedriveFolderId) {
+    Assert-OneDriveFolderId $onedriveFolderId
     Write-Host "Current ONEDRIVE_FOLDER_ID: $onedriveFolderId" -ForegroundColor DarkGray
 }
 
@@ -275,8 +310,10 @@ if (-not $onedriveFolderId) {
 }
 
 if ($onedriveFolderId -isnot [string] -or [string]::IsNullOrWhiteSpace($onedriveFolderId) -or $onedriveFolderId -eq 'null') {
-    throw 'Set ONEDRIVE_FOLDER_ID to a connector folder identifier or root, not a display path.'
+    throw 'Set ONEDRIVE_FOLDER_ID to a connector-returned folder identifier, not a display path or literal root.'
 }
+Assert-OneDriveFolderId $onedriveFolderId
+$onedriveFolderId = $onedriveFolderId.Trim()
 azd env set ONEDRIVE_FOLDER_ID $onedriveFolderId | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Failed to save ONEDRIVE_FOLDER_ID.' }
 Write-Host "Saved ONEDRIVE_FOLDER_ID=$onedriveFolderId" -ForegroundColor Green

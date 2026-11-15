@@ -1,62 +1,77 @@
 # SharePoint Online polling triggers (Python)
 
-This app receives the [ten SharePoint events](../README.md) through Connector
-Namespace Poll delivery. It needs no public callback, tunnel, or system key.
-The five standard events run by default; the index lists the deletion, form,
-Syntex, and digest prerequisites and optional environment settings.
+The Functions host receives SharePoint events from the Connector Namespace polling endpoint. Five standard events run by default; other events require explicit selection. No public callback is required.
 
-## Deploy
+| Function | Connector operation | Binding | Selection |
+| --- | --- | --- | --- |
+| `OnSharepointNewFile` | [`GetOnNewFileItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-file-is-created-(properties-only)) | `List[sharepoint.Item]` | Default |
+| `OnSharepointUpdatedFile` | [`GetOnUpdatedFileItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-file-is-created-or-modified-(properties-only)) | `List[sharepoint.Item]` | Default |
+| `OnSharepointNewItem` | [`GetOnNewItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-an-item-is-created) | `List[sharepoint.Item]` | Default |
+| `OnSharepointUpdatedItem` | [`GetOnUpdatedItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-an-item-is-created-or-modified) | `List[sharepoint.Item]` | Default |
+| `OnSharepointChangedItem` | [`GetOnChangedItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-an-item-or-a-file-is-modified) | `List[sharepoint.Item]` | Default |
+| `OnSharepointDeletedItem` | [`GetOnDeletedItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-an-item-is-deleted) | `List[sharepoint.DeletedItem]` | Deletion |
+| `OnSharepointDeletedFile` | [`GetOnDeletedFileItems`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-file-is-deleted) | `List[sharepoint.DeletedItem]` | Deletion |
+| `OnSharepointFormSubmitted` | [`GetOnNewItemsFromForm`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-form-is-submitted-(preview)) | `List[sharepoint.Item]` | Form |
+| `OnSharepointFileClassified` | [`GetOnUpdatedFileClassifiedTimes`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-file-is-classified-by-a-microsoft-syntex-model) | `List[sharepoint.Item]` | Syntex |
+| `OnSharepointRecurringDigest` | [`GetOnRecurrenceDigest`](https://learn.microsoft.com/connectors/sharepointonline/#recurring-digest-of-updates-(preview)) | `List[sharepoint.Item]` | Digest |
 
-Install Azure CLI 2.75.0+, Azure Developer CLI, and the
-[connector-namespace CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-From this folder, sign in with `az login` and `azd auth login`, create an environment
-with `azd env new sharepoint-polling`, set `SHAREPOINT_SITE_URL` with `azd env set`,
-then run `azd up`. The library defaults to `Documents`. Use a different environment
-from the webhook app.
+Handlers log counts, not customer data.
 
-Bicep creates only selected Poll trigger configs and emits all ten names and
-listener flags. Logical IDs retain the Python names, including
-`sharepoint-onsharepointnewfile` and `sharepoint-onsharepointupdatedfile`.
-Each handler adds `delivery_mode=func.DeliveryMode.POLL` and
-`trigger_config_name="%<FunctionName>TriggerConfigName%"` to the webhook decorator.
-Both use `connection="ConnectorNamespace"`.
+This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
-The app uses system-assigned identity, managed-identity storage and connection
-credentials, and the service-derived `ConnectorNamespace__pollingEndpoint`.
-The hook preserves existing OAuth consent, or requests a bounded interactive
-authorization. Sign in with an account that meets the selected source requirements.
-Re-run with `azd hooks run postdeploy`. The hook never upserts enabled Poll configs;
-Bicep owns them. It disables unselected existing sources by changing only state.
+## Prerequisites
 
-## Run locally
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- A SharePoint Online site and an account permitted to authorize access to the selected library/list and opt-in sources.
+- A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell on Windows or Bash on POSIX.
+- For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions, and `azurefunctions-extensions-connectors>=1.0.0b4`. The requirements file selects the SDK family.
 
-Create and activate a Python virtual environment, install the requirements with
-`python -m pip install -r requirements.txt`, and sign in with `az login`.
-Start Azurite and install Functions Core Tools. Run the hook after provisioning
-to generate ignored local settings, then run `func start`. The settings contain
-the deployed polling endpoint, all ten trigger names, and the selected listener
-flags. Existing files are preserved; use `-ForceLocalSettings` or
-`--force-local-settings` only when you want to replace them.
+For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it. Install the version-specific packages from `requirements.txt`.
 
-To generate settings without changing resources or requesting consent, invoke
-the PowerShell hook with `-LocalSettingsOnly` or Bash hook with
-`--local-settings-only`. `-ConsentLinkOnly` / `--consent-link-only` prints a consent
-link, or reports existing consent, without opening a browser, waiting, or writing
-local settings or trigger configs. These two flags cannot be combined. Rerun
-without the link-only flag after consent to finish setup. Normal setup waits for
-OAuth before writing settings or triggers. Bash hooks require Bash and Python,
-not jq or PowerShell. No credentials are required merely to import the helper.
+## Deploy to Azure
 
-Use a separate environment for local tests, or stop the deployed app first:
-hosts sharing trigger configs compete for events. Copying the example settings
-is also supported; replace the polling endpoint placeholder and select flags.
-Do not copy deployed credential/client-ID settings locally.
+```bash
+az login
+azd auth login
+azd env new sharepoint-polling
+azd env set SHAREPOINT_SITE_URL 'https://contoso.sharepoint.com/sites/test'
+azd up
+```
+
+Replace the example URL with your site and authorize the connection when prompted. Deployment creates the Function App, storage, monitoring, namespace, connection, and selected Poll configs.
+
+## Optional configuration
+
+| Setting | Purpose |
+| --- | --- |
+| `SHAREPOINT_LIBRARY_NAME` | Library name or GUID; defaults to `Documents`. |
+| `SHAREPOINT_LIST_NAME` | List/form table; defaults to the library when empty. |
+| `SHAREPOINT_FOLDER_PATH` | Optional folder filter for library events. |
+| `SHAREPOINT_ENABLE_DELETION_TRIGGERS` | Enable deletion events; requires a site collection administrator. |
+| `SHAREPOINT_FORM_ID` | Enable submissions from an existing form. |
+| `SHAREPOINT_ENABLE_SYNTEX_TRIGGER` | Enable classification events; requires a licensed Syntex model applied to the library. |
+| `SHAREPOINT_DIGEST_SCHEDULE` | Enable digest with `*` or `0`–`6`; includes `update=true` and `add=true`. |
+
+Rerun `azd up` after changing source selection. The hook preserves existing consent and disables unselected existing sources rather than deleting them. Use `-ConsentLinkOnly` or `--consent-link-only` to obtain a consent link without writing settings or triggers, then rerun the hook after consent. Do not combine this option with `-LocalSettingsOnly` or `--local-settings-only`.
+
+## Local development
+
+Start Azurite separately. After provisioning, run:
+
+```bash
+python -m venv .venv
+# Activate .venv for your shell.
+python -m pip install -r requirements.txt
+az login
+azd hooks run postdeploy
+func start
+```
+
+The hook creates local settings with the endpoint, trigger names, and listener flags if absent. Use `-ForceLocalSettings` or `--force-local-settings` to replace existing settings; `-LocalSettingsOnly` or `--local-settings-only` generates settings without resource writes or consent. Use developer credentials locally. Stop the deployed app or use separate configs to avoid competing listeners.
 
 ## Verify and clean up
 
-Check that the connection is Connected and selected trigger configs are Enabled
-with Poll delivery. Create and modify files and list items, then check logs for
-the matching `OnSharepoint...` name and batch count. Updated-file events may also
-fire on creation. Check optional events only after meeting their prerequisites.
-Remove an opt-in, run `azd up`, and verify its source is Disabled, not deleted.
-Run `azd down --purge` from this folder when finished.
+Check Connected consent and enabled Poll configs in [Connector Namespaces](https://connectors.azure.com/). Create and modify files and list items, then check the corresponding function-name and count logs. Verify optional events only after meeting their prerequisites.
+
+Run `azd down --purge` from this folder when finished. Never commit credentials or local settings.

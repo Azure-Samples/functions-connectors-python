@@ -22,8 +22,7 @@ Update `local.settings.json` with your connector runtime URL and access token be
 
 ## Deploy to Azure
 
-`azd up` will provision a Flex Consumption Function App (Python 3.14), a Storage account, Application Insights,
-and Log Analytics, then deploy the Python code.
+`azd up` will provision a Flex Consumption Function App (Python 3.14), a Storage account, Application Insights, and Log Analytics, then deploy the Python code.
 
 ```bash
 azd auth login
@@ -38,8 +37,7 @@ azd env set CONNECTOR_TOKEN '<your-token>'
 azd provision
 ```
 
-The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`).
-This is already configured in `host.json`.
+The connector trigger requires the **Preview** Functions Extension Bundle (`Microsoft.Azure.Functions.ExtensionBundle.Preview`). This is already configured in `host.json`.
 
 ## Project layout
 

@@ -31,8 +31,8 @@ metadata description = 'Connector Namespace Poll delivery using managed identity
 param userPrincipalId string = deployer().objectId
 
 @minLength(1)
-@description('OneDrive connector folder identifier, not a display path. Passed unchanged to the connector.')
-param folderId string = 'root'
+@description('Connector-returned OneDrive folder ID, not a display path or the literal root.')
+param folderId string
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))

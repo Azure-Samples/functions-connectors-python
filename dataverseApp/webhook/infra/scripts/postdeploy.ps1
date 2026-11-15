@@ -3,6 +3,7 @@ param([switch] $ForceLocalSettings)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'deployment-helpers.ps1')
+. (Join-Path $PSScriptRoot 'row-config.ps1')
 Get-Command az, azd -ErrorAction Stop | Out-Null
 $extension = az extension show --name connector-namespace --query name -o tsv 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $extension) { throw 'Install the connector-namespace Azure CLI extension before running this script.' }
@@ -14,8 +15,8 @@ foreach ($name in @('enableActionTrigger', 'enableSeparateRowTriggers')) {
 }
 $actionEnabled = [string]$outputs.enableActionTrigger -ceq 'true'
 $separateEnabled = [string]$outputs.enableSeparateRowTriggers -ceq 'true'
-if ([string]::IsNullOrWhiteSpace([string]$outputs.dataverseTableName) -or
-    ($separateEnabled -and [string]::IsNullOrWhiteSpace([string]$outputs.dataverseEntitySetName))) { throw 'Missing Dataverse table selector.' }
+if ([string]::IsNullOrWhiteSpace([string]$outputs.dataverseTableName)) { throw 'Missing Dataverse table selector.' }
+$rowParameters = if ($separateEnabled) { @(Get-DataverseRowParameters $outputs) }
 if ($actionEnabled) {
     foreach ($name in @('eventCatalog', 'eventCategory', 'eventTable', 'eventAction')) {
         if ([string]::IsNullOrWhiteSpace([string]$outputs.$name)) { throw "Missing business-event value $name." }
@@ -31,13 +32,25 @@ $localValues = @{
 }
 $optional = @(
     @{ functionName = 'OnDataverseActionPerformed'; operationName = 'BusinessEventsTrigger'; enabled = $actionEnabled }
-    @{ functionName = 'OnDataverseRowAdded'; operationName = 'GetOnNewItems_V2'; enabled = $separateEnabled }
-    @{ functionName = 'OnDataverseRowModified'; operationName = 'GetOnUpdatedItems_V2'; enabled = $separateEnabled }
-    @{ functionName = 'OnDataverseRowDeleted'; operationName = 'GetOnDeletedItems_V2'; enabled = $separateEnabled }
+    foreach ($trigger in Get-DataverseSeparateRowTriggers) {
+        $trigger.enabled = $separateEnabled
+        $trigger
+    }
 )
 foreach ($trigger in $optional) { $localValues["AzureWebJobs.$($trigger.functionName).Disabled"] = (-not $trigger.enabled).ToString().ToLowerInvariant() }
-Write-LocalSettings $localValues -Force:$ForceLocalSettings
 $inventory = @(Get-DataverseConfigurations $collectionUri)
+foreach ($trigger in Get-DataverseSeparateRowTriggers) {
+    $name = "$($outputs.connectorNamespaceConnectionName)-$($trigger.functionName.ToLowerInvariant())"
+    $existing = @($inventory | Where-Object { $_.config.name -ieq $name -or $_.config.id -ieq "$($context.namespaceId)/triggerConfigs/$name" })
+    if ($existing.Count -gt 1) { throw "Ambiguous Dataverse configuration '$name'." }
+    if ($existing.Count -eq 1) {
+        Assert-DataverseRowConfig $existing[0].config $trigger $outputs Webhook
+        if ($separateEnabled -and $existing[0].config.properties.state -cne 'Enabled') {
+            throw "Existing Dataverse row configuration '$name' is not Enabled; inspect it before changing its source registration."
+        }
+    }
+}
+Write-LocalSettings $localValues -Force:$ForceLocalSettings
 foreach ($trigger in $optional) {
     $name = "$($outputs.connectorNamespaceConnectionName)-$($trigger.functionName.ToLowerInvariant())"
     $existing = @($inventory | Where-Object { $_.config.name -ieq $name -or $_.config.id -ieq "$($context.namespaceId)/triggerConfigs/$name" })
@@ -51,15 +64,6 @@ foreach ($trigger in $optional) {
         Protect-DataverseActionRegistration $context $journal $config $outputs
     }
     if ($null -ne $config -and -not $trigger.enabled) {
-        if ($trigger.operationName -cne 'BusinessEventsTrigger') {
-            $expected = @{ dataset = $context.organization; table = [string]$outputs.dataverseEntitySetName }
-            $selectors = @{}
-            foreach ($parameter in $config.properties.parameters) {
-                if ($selectors.ContainsKey($parameter.name)) { throw 'Ambiguous Dataverse row selectors.' }
-                $selectors[$parameter.name] = [string]$parameter.value
-            }
-            Assert-DataverseActionContext $expected $selectors
-        }
         az rest --method delete --url "$collectionUri/${name}?api-version=2026-05-01-preview" -o none 2>$null
         if ($LASTEXITCODE -ne 0) { throw "Could not remove disabled Dataverse subscription '$name'." }
         Write-Host "Removed Connector Namespace configuration '$name'; source cleanup is not verified."
@@ -89,7 +93,7 @@ if ($separateEnabled) {
     foreach ($trigger in $optional | Where-Object operationName -NE 'BusinessEventsTrigger') {
         $triggers += @{
             functionName = $trigger.functionName; operationName = $trigger.operationName
-            parameters = @(@{ name = 'dataset'; value = $organization }, @{ name = 'table'; value = $outputs.dataverseEntitySetName })
+            parameters = $rowParameters
         }
     }
 }
@@ -101,6 +105,10 @@ foreach ($trigger in $triggers) {
     if ($existing.Count -gt 1) { throw "Ambiguous Dataverse configuration '$name'." }
     $config = if ($existing.Count -eq 1) { $existing[0].config } else { $null }
     if ($null -ne $config) { Assert-DataverseDestination $context $config $outputs $trigger.operationName $trigger.functionName }
+    if ($null -ne $config -and $trigger.operationName -cin @((Get-DataverseSeparateRowTriggers).operationName)) {
+        Write-Host "Preserved existing Dataverse row configuration '$name'; no new source registration requested."
+        continue
+    }
     if ($trigger.operationName -ceq 'BusinessEventsTrigger') {
         Protect-DataverseActionRegistration $context $journal $config $outputs -BeforeCreate
         if ($null -ne $config) {
