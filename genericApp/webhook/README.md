@@ -1,20 +1,14 @@
-# Generic connector webhook triggers (Python)
+# Generic connector webhook trigger (Python)
 
-Five functions preserve the existing illustrative names. Each receives raw `str`
-and logs only `<FunctionName> (generic API) trigger received.` No payload parsing,
-event-content logging, or connector SDK models are used.
+`OnGenericConnectorEvent` accepts a raw `str` payload from any supported connector
+operation configured for Webhook delivery. The Python handler
+`on_generic_connector_event` returns `None` and logs only
+`OnGenericConnectorEvent (generic API) trigger received.` It does not parse or log
+payload data or use connector SDK models, just like the [polling app](../polling/README.md).
 
-| Function | Example operation |
-| --- | --- |
-| `OnGenericOffice365NewEmail` | Office 365 `OnNewEmailV3` |
-| `OnGenericAzureBlobUpdated` | Azure Blob `OnUpdatedFiles_V2` |
-| `OnGenericSharepointNewFile` | SharePoint `GetOnNewFileItems` |
-| `OnGenericTeamsChannelMessage` | Teams `OnNewChannelMessage` |
-| `OnGenericCustomConnectorEvent` | Another supported connector operation |
-
-These are illustrative mappings, not provisioned resources. The function name
-routes its callback; it does not subscribe automatically. Choose a supported
-operation, connection, and parameters in each Connector Namespace trigger config.
+The function name routes its callback; it does not subscribe automatically.
+Choose a supported operation, connection, and parameters in each existing
+Connector Namespace trigger config.
 
 ## Prerequisites
 
@@ -50,11 +44,22 @@ func azure functionapp publish <function-app-name>
 Local settings are not published. Keep the included Preview extension bundle and
 configure dependency isolation for Python 3.12 and older.
 
-For each namespace trigger, set `notificationDetails.callbackUrl` to:
+The binding uses `connection="ConnectorNamespace"`, the same setting prefix as
+the polling app, not the source connector connection name. It omits
+`delivery_mode` to use the host's default Webhook mode. Do not add a
+`GenericTriggerConfigName` or `ConnectorNamespace__pollingEndpoint` setting;
+those belong to Poll delivery. The local settings example needs neither.
+
+For each existing Webhook trigger config intended for this app, set
+`notificationDetails.callbackUrl` to:
 
 ```text
-https://<actual-function-app-host>/runtime/webhooks/connector?functionName=<FunctionName>
+https://<actual-function-app-host>/runtime/webhooks/connector?functionName=OnGenericConnectorEvent
 ```
+
+When upgrading from the five connector-named handlers, update those configs to
+this callback; the old function names no longer exist. Keep each config's source
+connection, operation, and parameters unchanged.
 
 Set `notificationDetails.authentication` to `type: "QueryString"`, `name: "code"`,
 and `value` equal to the host's **`connector_extension` system key**, not an ordinary
@@ -76,9 +81,9 @@ func start --enableAuth
 Start Azurite separately first. Core Tools bypasses key checks locally by default;
 use `--enableAuth` before exposing the host publicly. To receive real events locally, expose the host
 through a secure public HTTPS tunnel and configure separate trigger callbacks using
-the local function names and connector extension system key. Remote host keys do
+`functionName=OnGenericConnectorEvent` and the local connector extension system key. Remote host keys do
 not authenticate the local host. Restore deployed callbacks if you change them,
-or use the [polling app](../polling) to avoid a public tunnel.
+or use the [polling app](../polling/README.md) to avoid a public tunnel.
 
 ## Verify and clean up
 

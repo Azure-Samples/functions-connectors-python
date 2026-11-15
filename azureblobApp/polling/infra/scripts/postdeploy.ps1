@@ -20,7 +20,7 @@ if ($outputs -isnot [System.Management.Automation.PSCustomObject]) {
     throw 'Deployment outputs must be a JSON object.'
 }
 
-foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorNamespaceConnectionName', 'connectorPollingEndpoint')) {
+foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorNamespaceConnectionName', 'connectorPollingEndpoint', 'AZURE_SUBSCRIPTION_ID')) {
     $value = $outputs.$key
     if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or $value -eq 'null') {
         throw "Deployment output '$key' must be a nonempty string."
@@ -30,6 +30,8 @@ foreach ($key in @('resourceGroupName', 'connectorNamespaceName', 'connectorName
 $resourceGroupName = $outputs.resourceGroupName
 $connectorNamespaceName = $outputs.connectorNamespaceName
 $connectorNamespaceConnectionName = $outputs.connectorNamespaceConnectionName
+$subscriptionId = $outputs.AZURE_SUBSCRIPTION_ID
+$connectionUri = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.Web/connectorGateways/$connectorNamespaceName/connections/${connectorNamespaceConnectionName}?api-version=2026-05-01-preview"
 $triggerConfigSettings = $outputs.triggerConfigSettings
 if ($triggerConfigSettings -is [string]) {
     $triggerConfigSettings = $triggerConfigSettings | ConvertFrom-Json
@@ -53,82 +55,34 @@ $values = [ordered]@{
 }
 Write-LocalSettings $values -ForceLocalSettings:$ForceLocalSettings
 
-Write-Host 'Authorizing Azure Blob Storage connection...' -ForegroundColor Yellow
-$currentStatus = az connector-namespace connection show `
-    -g $resourceGroupName --namespace $connectorNamespaceName `
-    -n $connectorNamespaceConnectionName `
-    --query 'properties.overallStatus' -o tsv
-if ($LASTEXITCODE -ne 0) {
-    throw 'Failed to read connection status.'
+Write-Host 'Waiting for the managed-identity Azure Blob connection...' -ForegroundColor Yellow
+for ($attempt = 1; $attempt -le 100; $attempt++) {
+    $connectionJson = az rest --method get --url $connectionUri --subscription $subscriptionId `
+        --query '{properties:{overallStatus:properties.overallStatus,parameterValueSet:{name:properties.parameterValueSet.name}}}' `
+        -o json
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to read connection status.'
+    }
+
+    try { $connection = ($connectionJson -join "`n") | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw 'Invalid connection configuration response.' }
+    if ($connection -isnot [System.Management.Automation.PSCustomObject] -or
+        $connection.properties.parameterValueSet.name -cne 'managedIdentityAuth') {
+        throw 'Azure Blob connection must use managedIdentityAuth. Reprovision the separate -mi connection; an existing OAuth connection cannot migrate to managed identity.'
+    }
+
+    $currentStatus = $connection.properties.overallStatus
+    if ($currentStatus -is [string] -and $currentStatus.Trim() -in @('Connected', 'Ready')) {
+        break
+    }
+    if ($currentStatus -is [string] -and $currentStatus.Trim() -eq 'Error') {
+        throw 'The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
+    }
+    if ($attempt -eq 100) {
+        throw 'Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
+    }
+
+    Start-Sleep -Seconds 3
 }
 
-if ($currentStatus -eq 'Connected') {
-    Write-Host 'Connection is already authorized.' -ForegroundColor Green
-} else {
-    Write-Host 'Sign in with the same user granted source storage access during provisioning.' -ForegroundColor Cyan
-    $consentLink = $null
-    for ($attempt = 1; $attempt -le 5; $attempt++) {
-        $consentLink = az connector-namespace connection list-consent-links `
-            -g $resourceGroupName --namespace $connectorNamespaceName `
-            --connection-name $connectorNamespaceConnectionName `
-            --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" `
-            --query 'value[0].link' -o tsv 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            $consentLink = $null
-        }
-
-        if (-not $consentLink -or $consentLink -eq 'null') {
-            $consentLink = az connector-namespace connection list-consent-links `
-                -g $resourceGroupName --namespace $connectorNamespaceName `
-                --connection-name $connectorNamespaceConnectionName `
-                --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" `
-                --query 'link' -o tsv 2>$null
-            if ($LASTEXITCODE -ne 0) {
-                $consentLink = $null
-            }
-        }
-
-        if ($consentLink -and $consentLink -ne 'null') {
-            break
-        }
-
-        if ($attempt -lt 5) {
-            Write-Host "Consent link attempt $attempt failed. Retrying in 5 seconds..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 5
-        }
-    }
-
-    if (-not $consentLink -or $consentLink -eq 'null') {
-        throw 'Failed to create consent link.'
-    }
-
-    Write-Host "Consent URL: $consentLink" -ForegroundColor Cyan
-    try {
-        Start-Process $consentLink | Out-Null
-    } catch {
-        Write-Host 'Unable to open a browser. Open the consent URL manually.' -ForegroundColor Yellow
-    }
-
-    $deadline = (Get-Date).AddMinutes(5)
-    do {
-        Start-Sleep -Seconds 3
-        $currentStatus = az connector-namespace connection show `
-            -g $resourceGroupName --namespace $connectorNamespaceName `
-            -n $connectorNamespaceConnectionName `
-            --query 'properties.overallStatus' -o tsv
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Failed to read connection status.'
-        }
-
-        Write-Host "Connection status: $currentStatus" -ForegroundColor Cyan
-        if ($currentStatus -eq 'Connected') {
-            break
-        }
-    } while ((Get-Date) -lt $deadline)
-
-    if ($currentStatus -ne 'Connected') {
-        throw 'Timed out waiting for the connection to reach Connected status.'
-    }
-}
-
-Write-Host 'Done. The Azure Blob connection is authorized; Bicep manages the Poll trigger.' -ForegroundColor Green
+Write-Host 'Done. The managed-identity Azure Blob connection is ready; Bicep manages the Poll trigger.' -ForegroundColor Green

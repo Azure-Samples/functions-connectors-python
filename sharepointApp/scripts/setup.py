@@ -309,8 +309,8 @@ def configure_triggers(outputs: dict, mode: str, collection: str, resources: lis
         put_properties(url, properties)
 
 
-def authorize(outputs: dict, *, link_only: bool) -> None:
-    """Preserve consent; retry link retrieval and bound the authorization wait."""
+def authorize(outputs: dict, *, link_only: bool) -> bool:
+    """Return whether consent allows setup; link-only always defers writes."""
     arguments = ("-g", outputs["resourceGroupName"], "--namespace", outputs["connectorNamespaceName"])
 
     def status() -> str:
@@ -323,7 +323,7 @@ def authorize(outputs: dict, *, link_only: bool) -> None:
 
     if status() == "Connected":
         print("SharePoint connection is already authorized; existing consent preserved.")
-        return
+        return not link_only
     link = None
     with private_json([{"parameterName": "token", "redirectUrl": "https://connectors.azure.com"}]) as parameters:
         for attempt in range(5):
@@ -345,7 +345,7 @@ def authorize(outputs: dict, *, link_only: bool) -> None:
     print("Authorize with an account that can access the monitored site and library.")
     print("Consent URL: " + link)
     if link_only:
-        return
+        return False
     try:
         webbrowser.open(link)
     except OSError:
@@ -355,6 +355,7 @@ def authorize(outputs: dict, *, link_only: bool) -> None:
         if time.monotonic() >= deadline:
             raise TimeoutError("Timed out waiting for SharePoint OAuth consent.")
         time.sleep(3)
+    return True
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -364,7 +365,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--force-local-settings", action="store_true")
     parser.add_argument("--local-settings-only", action="store_true")
-    parser.add_argument("--consent-link-only", action="store_true")
+    parser.add_argument("--consent-link-only", action="store_true",
+                        help="Show consent status or a link without opening a browser, waiting, or writing settings or triggers.")
     parser.add_argument("--callback-base-url")
     parser.add_argument("--connector-extension-key")
     options = parser.parse_args(argv)
@@ -375,14 +377,19 @@ def main(argv: list[str] | None = None) -> None:
         raise ValueError("Invalid azd environment outputs.")
     required(outputs, "resourceGroupName", "connectorNamespaceName", "connectorNamespaceConnectionName")
     values = local_values(outputs, options.mode)
-    write_local_settings(options.project.resolve() / "local.settings.json", values, force=options.force_local_settings)
     if options.local_settings_only:
+        if options.consent_link_only:
+            parser.error("--local-settings-only cannot be combined with --consent-link-only.")
+        write_local_settings(options.project.resolve() / "local.settings.json", values, force=options.force_local_settings)
         return
     cli("az", "extension", "show", "--name", "connector-namespace", "-o", "json")
     collection = namespace_url(outputs)
+    if not authorize(outputs, link_only=options.consent_link_only):
+        print("Setup deferred; rerun the hook after consent without --consent-link-only.")
+        return
     resources = list_triggers(collection)
+    write_local_settings(options.project.resolve() / "local.settings.json", values, force=options.force_local_settings)
     configure_triggers(outputs, options.mode, collection, resources, options.callback_base_url, options.connector_extension_key)
-    authorize(outputs, link_only=options.consent_link_only)
 
 
 if __name__ == "__main__":

@@ -7,11 +7,17 @@ Choose the standalone [polling app](./polling/README.md) or
 | App | Functions |
 | --- | --- |
 | Polling | One connector-neutral `OnGenericConnectorEvent` |
-| Webhook | Five existing illustrative functions for Office 365, Azure Blob, SharePoint, Teams, and custom connectors |
+| Webhook | One connector-neutral `OnGenericConnectorEvent` |
 
 All handlers receive raw `str` payloads and log only their trigger names. They do
 not parse payloads, infer item counts, or log event contents. No connector SDK or
 rich binding extension package is required for these raw-string bindings.
+
+Both apps use the Python handler `on_generic_connector_event` and the connection
+setting prefix `ConnectorNamespace`. Polling requires a polling endpoint and
+`GenericTriggerConfigName`; webhook uses the default Webhook delivery mode and
+requires neither. Point existing webhook trigger configs at the
+[`OnGenericConnectorEvent` callback](./webhook/README.md#configure-and-deploy).
 
 **These apps do not provision Azure resources.** Use existing authorized Connector
 Namespace connections and trigger configurations. There are no `azd up` or postdeploy

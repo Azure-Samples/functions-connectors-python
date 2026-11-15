@@ -18,6 +18,17 @@ resource teamsConnection 'Microsoft.Web/connectorGateways/connections@2026-05-01
   properties: { connectorName: 'teams' }
 }
 
+resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: teamsConnection
+  name: 'namespace-msi'
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: { objectId: connectorNamespace.identity.principalId, tenantId: tenant().tenantId }
+    }
+  }
+}
+
 resource userAccessPolicy 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = if (!empty(userPrincipalId)) {
   parent: teamsConnection
   name: 'dev-user'

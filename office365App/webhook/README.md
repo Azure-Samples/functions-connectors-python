@@ -40,8 +40,10 @@ Set values before `azd up`: `OFFICE365_MAIL_FOLDER` (default `Inbox`),
 `APPLICATION_INSIGHTS_LOCATION` (defaults to the host region).
 The authorized account needs full access to an opted-in shared mailbox.
 
-`OFFICE365_ENABLE_TRIGGERS=false` registers disabled sources without waiting for
-consent. Set it back to `true` and run `azd up` to activate them. The hook preserves
+`OFFICE365_ENABLE_TRIGGERS=false` skips the consent wait. If the connection is not
+authorized, the hook prints a consent link and defers local settings and callback
+registration. After consent, rerun the hook to register disabled sources, or set
+the flag back to `true` and run `azd up` to activate them. The hook preserves
 existing OAuth consent, checks ownership before updating a config, uses the
 deployed FQDN, and preserves custom recurrence and unrelated metadata. It registers
 `<connection-name>-<lowercase-function-name>` configurations. Re-running the hook
@@ -55,9 +57,11 @@ selection when preserving a local file.
 
 `pwsh ./infra/scripts/postdeploy.ps1 -ConsentLinkOnly` or
 `sh ./infra/scripts/postdeploy.sh --consent-link-only` skips browser opening and
-authorization waiting, but still runs setup and callback updates. Normal consent
-waiting is bounded to five minutes. CLI failures stop setup without printing key
-or callback JSON bodies.
+authorization waiting and never writes local settings or trigger configs, even
+when consent already exists. It prints a consent link or reports existing consent.
+Rerun without the flag after consent to finish setup. Normal consent waiting is
+bounded to five minutes. CLI failures stop setup without printing key or callback
+JSON bodies.
 
 ## Local settings and public tunnel
 

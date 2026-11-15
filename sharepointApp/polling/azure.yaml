@@ -13,8 +13,10 @@ hooks:
     windows:
       shell: pwsh
       run: ./infra/scripts/postdeploy.ps1
+      interactive: true
+      continueOnError: false
     posix:
-      shell: bash
-      run: ./infra/scripts/postdeploy.sh
-    interactive: true
-    continueOnError: false
+      shell: sh
+      run: bash ./infra/scripts/postdeploy.sh
+      interactive: true
+      continueOnError: false

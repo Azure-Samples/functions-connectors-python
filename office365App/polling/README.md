@@ -44,8 +44,11 @@ Granting app RBAC after app creation avoids a settings/identity dependency cycle
 
 The hook preserves existing OAuth consent. Otherwise authorize with the mailbox
 account using its consent link. `-ConsentLinkOnly` / `--consent-link-only` prints
-the link without opening a browser or waiting; setup still runs. Authorization
-waits at most five minutes. Disabled sources also skip the wait.
+the link, or reports existing consent, without opening a browser, waiting, or
+writing local settings or triggers. Authorization waits at most five minutes.
+If the connection is not authorized and sources are Disabled, the hook prints
+the link and defers setup without waiting. After consent, rerun the hook without
+the link-only flag to finish setup.
 
 ## Poll settings and lifecycle
 
