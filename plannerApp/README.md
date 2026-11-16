@@ -16,6 +16,12 @@ The operation names, required keys and function names match the Node Planner web
 
 Swagger declares a Group Id dynamic selector through `ListGroups`. Plan Id uses `ListGroupPlans` with the selected `groupId`. These samples **do not implement automated pickers**. Supply real IDs in the mode's ignored trigger-input file or enter them at the prompts. The assigned-to-me trigger needs neither ID. Only the reviewed required keys are accepted; optional or guessed wire parameters are rejected.
 
+## Python dependencies
+
+Both projects require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`. The requirements select `azure-functions>=2.4.0` only when `python_version >= '3.13'`. The deployed apps use Python 3.14; local development does not require Python 3.13+.
+
+For supported local Python 3.12 and older runtimes, create and activate a virtual environment, manually install `azure-functions>=1.27.0b1` with pip's `--pre` option **before** installing the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in local settings. The requirements marker skips the Functions SDK on these runtimes; it does not install an older version automatically.
+
 ## Setup and safety
 
 Both projects use the connector-local [setup helper](scripts/setup.py); neither depends on another sample. Use a distinct azd environment for each mode. Do not point both environments at the same resource group. The templates create Python 3.14 Flex Consumption (`FC1`) apps with no always-ready instances, system-assigned identity, AVM storage and monitoring, Entra-only monitoring ingestion, and namespace/function/deployer connection policies. Blob, queue and table host-storage access uses managed identity. Function roles are assigned after the app exists. No FIC, client credentials or cloud `FUNCTIONS_WORKER_RUNTIME` setting is used.

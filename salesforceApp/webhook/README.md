@@ -2,6 +2,8 @@
 
 Read the [shared setup, parameter and permission guidance](../README.md) first. This folder is a complete azd project; use a separate environment from polling and run `azd up` here.
 
+Install [requirements.txt](requirements.txt) in an activated virtual environment: `azure-connectors>=1.0.0`, `azurefunctions-extensions-connectors>=1.0.0`, and `azure-functions>=2.4.0` for Python 3.13+. Supported older local runtimes need a manual Functions SDK install **before** requirements and worker isolation; see [Python dependencies](../README.md#python-dependencies).
+
 Both functions use the default connector webhook binding with `connection="ConnectorNamespace"`, no Poll delivery argument, and no trigger-config-name argument. They receive `list[salesforce.Item]` and log only function name and count. Salesforce's underlying new/updated operations are GET-based connector triggers; webhook here describes delivery from the Connector Namespace to the Function App, not a Salesforce native outbound-message subscription.
 
 Copy [trigger-inputs.example.json](trigger-inputs.example.json) to ignored `trigger-inputs.json`, replace placeholder `table` values with actual reviewed Salesforce object IDs, and remove unwanted events. The hook can prompt instead if no file exists and the terminal is interactive.

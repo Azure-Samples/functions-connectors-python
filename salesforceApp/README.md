@@ -11,13 +11,19 @@ Handlers log only the function name and record count, never record fields or pay
 
 ## Prerequisites
 
-- Python 3.14 for the deployed app; the dependency markers also support the older SDK branch for local Python below 3.13.
+- Python 3.14 for the deployed app; supported older local runtimes need the manual setup in [Python dependencies](#python-dependencies).
 - Azure Developer CLI, Azure CLI, and a `connector-namespace` CLI extension that supports `connection authenticate --timeout 300 --no-access-policy`.
 - An Azure subscription with Connector Namespace preview access in the selected region, and Flex Consumption support in the app region.
 - Rights to create resources and role assignments. The developer principal parameter expects a user object ID; service-principal deployments need an explicit developer user ID.
 - A Salesforce account with connector authentication access and permission to read the selected object and fields. Confirm that the Salesforce edition/account supports the API and that new/changed records can be read through the selected connector operations. Do not assume access to an object implies access to every field or record.
 
 The namespace, Function App system-assigned identity, and developer each get a connection access policy. The app and developer get Blob Data Owner, Queue Data Contributor, and Table Data Contributor roles for host/deployment storage. Storage shared-key access and Application Insights local authentication stay off. Application Insights uses Entra authentication and Metrics Publisher grants. Python 3.14 and `FC1` come from `functionAppConfig`; there is no cloud `FUNCTIONS_WORKER_RUNTIME`. `alwaysReady` is empty.
+
+## Python dependencies
+
+Both projects require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`. The requirements select `azure-functions>=2.4.0` only when `python_version >= '3.13'`. The deployed apps use Python 3.14; local development does not require Python 3.13+.
+
+For supported local Python 3.12 and older runtimes, create and activate a virtual environment, manually install `azure-functions>=1.27.0b1` with pip's `--pre` option **before** installing the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in local settings. The requirements marker skips the Functions SDK on these runtimes; it does not install an older version automatically.
 
 ## Reviewed trigger inputs
 

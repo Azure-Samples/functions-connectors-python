@@ -2,6 +2,8 @@
 
 Read the [shared setup, parameter and permission guidance](../README.md) first. This folder is a complete azd project; run `azd up` here with a distinct environment name.
 
+Install [requirements.txt](requirements.txt) in an activated virtual environment: `azure-connectors>=1.0.0`, `azurefunctions-extensions-connectors>=1.0.0`, and `azure-functions>=2.4.0` for Python 3.13+. Supported older local runtimes need a manual Functions SDK install **before** requirements and worker isolation; see [Python dependencies](../README.md#python-dependencies).
+
 Both functions use `connection="ConnectorNamespace"`, explicit `DeliveryMode.POLL`, and `%OnSalesforceNewItemsTriggerConfigName%` or `%OnSalesforceUpdatedItemsTriggerConfigName%`. They receive `list[salesforce.Item]` and log only function name and count.
 
 Copy [trigger-inputs.example.json](trigger-inputs.example.json) to ignored `trigger-inputs.json`, replace the placeholder object IDs with reviewed `GetTables` identifiers, and remove entries you do not want. Alternatively, answer the hook's terminal prompts. Never supply an empty selected `table`.

@@ -4,9 +4,9 @@ This standalone app receives completed-task, new-task and assigned-to-me events 
 
 ## Build and deploy
 
-Install Python 3.14, Azure Functions Core Tools v4 with Preview connector-bundle support, Azure CLI with a `connector-namespace` extension that supports `connection authenticate`, Azure Developer CLI, and Azurite for local development. The cloud app always uses Python 3.14. Requirements select Functions SDK `>=2.4.0b1` for Python 3.13+ and `>=1.27.0b1` for older local runtimes; the connector extension requires `>=1.0.0b4`.
+Install Azure Functions Core Tools v4 with Preview connector-bundle support, Azure CLI with a `connector-namespace` extension that supports `connection authenticate`, Azure Developer CLI, and Azurite for local development. The cloud app always uses Python 3.14. Requirements select `azure-functions>=2.4.0` for Python 3.13+ and require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`. For supported older local runtimes, follow [Python dependencies](../README.md#python-dependencies), including the manual Functions SDK install before requirements and worker isolation.
 
-From this directory, create and activate a virtual environment and install [requirements](requirements.txt) with pip's `--pre` option. Sign in with Azure CLI and azd, select the subscription and create a unique azd environment. Set `AZURE_LOCATION`, and optionally `CONNECTOR_NAMESPACE_LOCATION` (default `westcentralus`) and `APPLICATION_INSIGHTS_LOCATION` to supported regions.
+From this directory, create and activate a virtual environment and install [requirements](requirements.txt). Sign in with Azure CLI and azd, select the subscription and create a unique azd environment. Set `AZURE_LOCATION`, and optionally `CONNECTOR_NAMESPACE_LOCATION` (default `westcentralus`) and `APPLICATION_INSIGHTS_LOCATION` to supported regions.
 
 Copy [trigger-inputs.example.json](trigger-inputs.example.json) to ignored trigger-inputs.json, replace placeholders with actual Group Id and Plan Id, and remove unselected objects. The `id` key means plan ID, not task ID. Assigned-to-me uses the consenting user and requires an empty parameter array. Each entry must use the exact reviewed function/operation pair and parameter keys. Empty selections, duplicates, unknown keys and placeholders fail before source writes.
 
