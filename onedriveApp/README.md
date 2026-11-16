@@ -17,10 +17,10 @@ Each app includes its own infrastructure, dependencies, hooks, and local setting
 
 | Python | Minimum Functions SDK | Required setting |
 | --- | --- | --- |
-| 3.13+ | `azure-functions>=2.4.0b1` | None |
-| 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+| 3.13+ | `azure-functions>=2.4.0` | None |
+| 3.12 and older supported versions | `azure-functions>=1.27.0b1`, installed manually | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-Both requirement files use Python-version markers and require `azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14.
+Requirements install the SDK only on Python 3.13+; on older versions, install it before the sample requirements. Both apps require `azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14.
 
 Use a **connector folder ID**, not a display name, path, or a guessed encoding. The literal `root` is invalid even though trigger registration can succeed; evaluation fails with `Invalid fileId`. Polling requires a connector-returned ID before provisioning. The webhook picker resolves the root's real ID through `GetFileByPath` and can browse an authorized connection for subfolder IDs.
 

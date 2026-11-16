@@ -13,10 +13,10 @@ Each folder includes its own infrastructure, dependencies, hooks, and local sett
 
 | Python | Minimum Functions SDK | Required app setting |
 | --- | --- | --- |
-| 3.13+ | `azure-functions>=2.4.0b1` | None |
-| 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+| 3.13+ | `azure-functions>=2.4.0` | None |
+| 3.12 and older supported versions | `azure-functions>=1.27.0b1`, installed manually | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-Both requirements files use Python-version markers and include `azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14.
+Requirements install the SDK only on Python 3.13+; on older versions, install it before the sample requirements. Both apps require `azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14.
 
 > [!CAUTION]
 > The handlers log blob names, paths, sizes, and modification times. Use test data, restrict log access, and run `azd down --purge` from the app folder when finished.

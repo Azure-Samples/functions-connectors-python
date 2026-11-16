@@ -27,10 +27,10 @@ Do not register [`CalendarGetOnChangedItemsV3`](https://learn.microsoft.com/conn
 
 | Python | Minimum `azure-functions` | Required setting |
 | --- | --- | --- |
-| 3.13 and newer | `2.4.0b1` | None |
-| 3.12 and older (supported Functions versions) | `1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+| 3.13 and newer | `2.4.0` | None |
+| 3.12 and older (supported Functions versions) | `1.27.0b1`, installed manually | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-The deployment templates use Python 3.14. Both apps require `azurefunctions-extensions-connectors>=1.0.0b4`.
+Requirements install the SDK only on Python 3.13+; on older versions, install it before the sample requirements. The deployment templates use Python 3.14. Both apps require `azurefunctions-extensions-connectors>=1.0.0`.
 
 Handlers log only the function name and item count, not subjects, addresses, organizers, dates, attachments or body content. Delivery is at least once; add deduplication before using non-idempotent actions. Test with a test mailbox and delete resources with `azd down --purge` when finished.
 

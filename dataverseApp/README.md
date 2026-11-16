@@ -16,6 +16,6 @@ Both apps configure all five triggers after consent. Separate row operations ove
 
 Each app includes independent infrastructure, dependencies, hooks, and safe local settings examples. Run `azd up` from the chosen folder with a separate environment name for each mode. Poll delivery does not require a public callback; webhook delivery uses the connector extension system key.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`. Requirements use version markers. Templates use Python 3.14. Both apps require `azurefunctions-extensions-connectors>=1.0.0b4`.
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before the sample requirements and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; requirements install the SDK only on Python 3.13+. Templates use Python 3.14. Both apps require `azurefunctions-extensions-connectors>=1.0.0`.
 
 See the [Dataverse connector reference](https://learn.microsoft.com/connectors/commondataservice/).

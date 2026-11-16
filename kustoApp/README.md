@@ -5,7 +5,12 @@ Azure Functions sample app demonstrating the **Azure Data Explorer (Kusto)** con
 ## Prerequisites
 
 - [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
-- `azure-functions>=2.3.0b1`
+- `azure-functions>=2.4.0` on Python 3.13+.
+
+On Python 3.12 and older supported versions, manually install
+`azure-functions>=1.27.0b1` before sample requirements and set
+`PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in Azure. See the
+[older Python setup](../README.md#python-312-and-older-supported-versions).
 
 ## Triggers included
 

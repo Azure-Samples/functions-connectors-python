@@ -20,6 +20,6 @@ Handlers log trigger names and item counts, not message, member, recording, or t
 
 Each folder has independent infrastructure, dependencies, hooks, and local settings examples. Run `azd up` from the chosen folder with a separate environment name for each mode.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`. Requirements use version markers and include `azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14. PowerShell 7.3+ is required for setup on all platforms.
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before the sample requirements and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; requirements install the SDK only on Python 3.13+. Requirements include `azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14. PowerShell 7.3+ is required for setup on all platforms.
 
 See the [Teams connector reference](https://learn.microsoft.com/connectors/teams/).

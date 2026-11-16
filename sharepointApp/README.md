@@ -36,6 +36,6 @@ Run `azd up` after changing source options. Removing an opt-in disables its sele
 
 Deployment uses Python 3.14 on Flex Consumption with a system-assigned identity.
 
-Both apps require `azurefunctions-extensions-connectors>=1.0.0b4`, plus `azure-functions>=2.4.0b1` on Python 3.13+ or `azure-functions>=1.27.0b1` on older supported Python versions. The templates use Python 3.14.
+Both apps require `azurefunctions-extensions-connectors>=1.0.0`, plus `azure-functions>=2.4.0` on Python 3.13+. On older supported Python versions, install `azure-functions>=1.27.0b1` before the sample requirements and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`. The templates use Python 3.14.
 
 See the [SharePoint connector reference](https://learn.microsoft.com/connectors/sharepointonline/). Use test data, keep local settings and keys out of Git, and run `azd down --purge` from the selected delivery folder when finished.
