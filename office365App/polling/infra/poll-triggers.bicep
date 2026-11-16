@@ -4,7 +4,6 @@ param mailFolderPath string = 'Inbox'
 param calendarId string = 'Calendar'
 param sharedMailboxAddress string = ''
 param sharedMailboxFolderId string = 'Inbox'
-param enableTriggers bool = true
 
 var triggers = [
   {
@@ -76,7 +75,7 @@ resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-
     deliveryMode: 'Poll'
     operationName: trigger.operationName
     parameters: trigger.parameters
-    state: enableTriggers ? 'Enabled' : 'Disabled'
+    state: 'Enabled'
     type: 'NotSpecified'
     description: 'Office 365 ${trigger.functionName} with Poll delivery.'
   }

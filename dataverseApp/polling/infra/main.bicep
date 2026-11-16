@@ -18,13 +18,10 @@ param dataverseEnvironmentUrl string
 
 @description('Logical table name, for example account, not the accounts entity set.')
 param dataverseTableName string = 'account'
-param enableSeparateRowTriggers bool = false
-@minLength(1)
 @description('Table Name selector returned by GetTables for the selected environment.')
-param dataverseEntitySetName string = 'accounts'
-@description('Exact GetScopeFilters selector; required when separate row triggers are enabled.')
+param dataverseEntitySetName string = ''
+@description('Exact GetScopeFilters selector for the selected environment and table.')
 param dataverseRowScope string = ''
-param enableActionTrigger bool = false
 param eventCatalog string = ''
 param eventCategory string = ''
 param eventTable string = ''
@@ -34,7 +31,7 @@ param eventAction string = ''
 param userPrincipalId string = deployer().objectId
 
 metadata name = 'Azure Functions Microsoft Dataverse Poll Delivery (Python)'
-metadata description = 'Current Dataverse row changes and optional action-performed events with Poll delivery.'
+metadata description = 'Dataverse row changes and action-performed events with Poll delivery.'
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -149,92 +146,12 @@ module connectorNamespace './connector-namespace.bicep' = {
   }
 }
 
-module pollTriggers './poll-triggers.bicep' = {
-  scope: rg
-  name: '${connectorNamespaceName}-poll-triggers'
-  params: {
-    functionAppName: functionAppName
-    namespaceName: connectorNamespace.outputs.name
-    connectionName: connectorNamespace.outputs.connectionName
-    environmentUrl: dataverseEnvironmentUrl
-    tableName: dataverseTableName
-    enableSeparateRowTriggers: enableSeparateRowTriggers
-    enableActionTrigger: enableActionTrigger
-  }
-}
-
-var allAppSettings = union({
-  PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-  AzureWebJobsStorage__credential: 'managedidentity'
-  AzureWebJobsStorage__accountName: storageAccount.outputs.name
-  APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-  APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
-  ConnectorNamespace__credential: 'managedidentity'
-  ConnectorNamespace__pollingEndpoint: pollTriggers.outputs.pollingEndpoint
-}, pollTriggers.outputs.triggerConfigSettings)
-
-module functionApp 'br/public:avm/res/web/site:0.22.0' = {
-  scope: rg
-  name: functionAppName
-  params: {
-    name: functionAppName
-    location: location
-    tags: union(tags, { 'azd-service-name': 'function-app' })
-    kind: 'functionapp,linux'
-    serverFarmResourceId: functionAppPlan.outputs.resourceId
-    httpsOnly: true
-    managedIdentities: {
-      systemAssigned: true
-    }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storageAccount.outputs.primaryBlobEndpoint}${deploymentStorageContainerName}'
-          authentication: {
-            type: 'SystemAssignedIdentity'
-          }
-        }
-      }
-      scaleAndConcurrency: {
-        instanceMemoryMB: 2048
-        maximumInstanceCount: 100
-        alwaysReady: []
-      }
-      runtime: { name: 'python', version: '3.14' }
-    }
-    siteConfig: {
-      minTlsVersion: '1.2'
-      functionsRuntimeScaleMonitoringEnabled: false
-    }
-    configs: [{ name: 'appsettings', properties: allAppSettings }]
-  }
-}
-
-module functionAppRbac './function-access.bicep' = {
-  scope: rg
-  name: '${functionAppName}-rbac'
-  params: {
-    storageAccountName: storageAccount.outputs.name
-    appInsightsName: monitoring.outputs.name
-    functionAppPrincipalId: functionApp.outputs.systemAssignedMIPrincipalId!
-  }
-}
-
-module functionAccessPolicy './connection-access.bicep' = {
-  scope: rg
-  name: '${connectorNamespaceName}-func-policy'
-  params: {
-    connectorNamespaceName: connectorNamespace.outputs.name
-    connectionName: connectorNamespace.outputs.connectionName
-    functionAppPrincipalId: functionApp.outputs.systemAssignedMIPrincipalId!
-  }
-}
-
 output resourceGroupResourceId string = rg.id
 output resourceGroupName string = rg.name
-output functionAppName string = functionApp.outputs.name
-output functionAppDefaultHostname string = functionApp.outputs.defaultHostname
+output functionAppName string = functionAppName
+output functionAppPlanName string = functionAppPlan.outputs.name
+output storageAccountName string = storageAccount.outputs.name
+output appInsightsName string = monitoring.outputs.name
 output connectorNamespaceName string = connectorNamespace.outputs.name
 output connectorNamespaceConnectionName string = connectorNamespace.outputs.connectionName
 output dataverseFunctionName string = 'OnDataverseRowChanged'
@@ -246,5 +163,3 @@ output eventCatalog string = eventCatalog
 output eventCategory string = eventCategory
 output eventTable string = eventTable
 output eventAction string = eventAction
-output connectorPollingEndpoint string = pollTriggers.outputs.pollingEndpoint
-output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings

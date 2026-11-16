@@ -21,7 +21,7 @@ This folder is a standalone app. Run all commands from this folder; no parent or
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - A SharePoint Online site and an account permitted to authorize access to the selected library/list and opt-in sources.
 - A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell on Windows or Bash on POSIX.
 - For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
@@ -35,25 +35,25 @@ For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the templ
 az login
 azd auth login
 azd env new sharepoint-polling
-azd env set SHAREPOINT_SITE_URL 'https://contoso.sharepoint.com/sites/test'
 azd up
 ```
 
-Replace the example URL with your site and authorize the connection when prompted. Deployment creates the Function App, storage, monitoring, namespace, connection, and selected Poll configs.
+Authorize the connection, then select a site, library, and list from the connector's choices. The hook saves the selections in the azd environment. It creates enabled Poll configs after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
 
 ## Optional configuration
 
 | Setting | Purpose |
 | --- | --- |
-| `SHAREPOINT_LIBRARY_NAME` | Library name or GUID; defaults to `Documents`. |
-| `SHAREPOINT_LIST_NAME` | List/form table; defaults to the library when empty. |
+| `SHAREPOINT_SITE_URL` | Skip the site picker with the HTTPS site URL returned by the connector. |
+| `SHAREPOINT_LIBRARY_NAME` | Skip the library picker with a connector-returned library ID. |
+| `SHAREPOINT_LIST_NAME` | Skip the list picker with a connector-returned list ID; an explicitly empty value uses the selected library. |
 | `SHAREPOINT_FOLDER_PATH` | Optional folder filter for library events. |
 | `SHAREPOINT_ENABLE_DELETION_TRIGGERS` | Enable deletion events; requires a site collection administrator. |
 | `SHAREPOINT_FORM_ID` | Enable submissions from an existing form. |
 | `SHAREPOINT_ENABLE_SYNTEX_TRIGGER` | Enable classification events; requires a licensed Syntex model applied to the library. |
 | `SHAREPOINT_DIGEST_SCHEDULE` | Enable digest with `*` or `0`–`6`; includes `update=true` and `add=true`. |
 
-Rerun `azd up` after changing source selection. The hook preserves existing consent and disables unselected existing sources rather than deleting them. Use `-ConsentLinkOnly` or `--consent-link-only` to obtain a consent link without writing settings or triggers, then rerun the hook after consent. Do not combine this option with `-LocalSettingsOnly` or `--local-settings-only`.
+Rerun `azd up` after changing source selection. The hook preserves existing consent and disables unselected sample-owned sources rather than deleting them. To inspect consent without writing settings or triggers, run `python ./infra/scripts/setup.py --mode polling --project . --consent-link-only` after provisioning the base layer.
 
 ## Local development
 
@@ -68,7 +68,7 @@ azd hooks run postdeploy
 func start
 ```
 
-The hook creates local settings with the endpoint, trigger names, and listener flags if absent. Use `-ForceLocalSettings` or `--force-local-settings` to replace existing settings; `-LocalSettingsOnly` or `--local-settings-only` generates settings without resource writes or consent. Use developer credentials locally. Stop the deployed app or use separate configs to avoid competing listeners.
+The hook creates local settings with the endpoint, trigger names, and listener flags if absent, without resource writes or consent. To replace them, run `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings`. Use developer credentials locally. Stop the deployed app or use separate configs to avoid competing listeners.
 
 ## Verify and clean up
 

@@ -12,23 +12,3 @@ if (-not [Uri]::TryCreate([string]$values.DATAVERSE_ENVIRONMENT_URL, [UriKind]::
     $organization.AbsolutePath.Trim('/') -or $organization.Query -or $organization.Fragment) {
     throw 'DATAVERSE_ENVIRONMENT_URL must be an HTTPS organization URL without credentials, a path, query, or fragment.'
 }
-foreach ($name in @('DATAVERSE_ENABLE_ACTION_TRIGGER', 'DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS')) {
-    if ($values.PSObject.Properties.Name -contains $name -and [string]$values.$name -cnotin @('true', 'false')) {
-        throw "$name must be true or false."
-    }
-}
-if ($values.PSObject.Properties.Name -contains 'DATAVERSE_ENTITY_SET_NAME' -and
-    [string]::IsNullOrWhiteSpace([string]$values.DATAVERSE_ENTITY_SET_NAME)) {
-    throw 'DATAVERSE_ENTITY_SET_NAME must be a nonempty table Name selector returned by GetTables.'
-}
-if ([string]$values.DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS -ceq 'true' -and
-    [string]::IsNullOrWhiteSpace([string]$values.DATAVERSE_ROW_SCOPE)) {
-    throw 'DATAVERSE_ROW_SCOPE is required when DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS=true. Use the exact GetScopeFilters selector for the selected environment and table, not the combined trigger scope.'
-}
-if ([string]$values.DATAVERSE_ENABLE_ACTION_TRIGGER -ceq 'true') {
-    foreach ($name in @('DATAVERSE_EVENT_CATALOG', 'DATAVERSE_EVENT_CATEGORY', 'DATAVERSE_EVENT_TABLE', 'DATAVERSE_EVENT_ACTION')) {
-        if ([string]::IsNullOrWhiteSpace([string]$values.$name)) {
-            throw "$name is required when DATAVERSE_ENABLE_ACTION_TRIGGER=true."
-        }
-    }
-}

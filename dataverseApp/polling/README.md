@@ -2,22 +2,22 @@
 
 The Functions host receives Dataverse events from the Connector Namespace polling endpoint. All handlers use raw `str` bindings and log only the trigger name. No public callback is required.
 
-| Function | Connector operation | Selection |
-| --- | --- | --- |
-| `OnDataverseRowChanged` | [`SubscribeWebhookTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-a-row-is-added,-modified-or-deleted) | Default |
-| `OnDataverseActionPerformed` | [`BusinessEventsTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-an-action-is-performed) | Opt-in |
-| `OnDataverseRowAdded` | `SubscribeOnNewItems` | Opt-in |
-| `OnDataverseRowModified` | `SubscribeOnUpdatedItems` | Opt-in |
-| `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` | Opt-in |
+| Function | Connector operation |
+| --- | --- |
+| `OnDataverseRowChanged` | [`SubscribeWebhookTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-a-row-is-added,-modified-or-deleted) |
+| `OnDataverseActionPerformed` | [`BusinessEventsTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-an-action-is-performed) |
+| `OnDataverseRowAdded` | `SubscribeOnNewItems` |
+| `OnDataverseRowModified` | `SubscribeOnUpdatedItems` |
+| `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` |
 
 This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - PowerShell 7.3+ on every platform, including when using the Bash wrapper.
 - A Dataverse organization and an account permitted to authorize the connection and register organization-scoped event subscriptions.
-- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- A supported Python version; the template deploys Python 3.14. The app preprovision hook also requires Python; set `PYTHON` to an interpreter path if needed. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 - `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions, and `azurefunctions-extensions-connectors>=1.0.0b4`. The requirements file selects the SDK family.
 
 For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it. Install the version-specific packages from `requirements.txt`.
@@ -32,20 +32,21 @@ azd env set DATAVERSE_ENVIRONMENT_URL https://contoso.crm.dynamics.com
 azd up
 ```
 
-Authorize with an account that can register Dataverse events. Deployment creates the Function App, storage, monitoring, namespace, OAuth connection, and selected Poll configs. The default combined row trigger uses logical table `account`, `message=7`, and organization scope `4`.
+Authorize with an account that can register Dataverse events. After consent, choose the separate-row table and scope, and the action catalog, category, table, and action from the connector's returned options. The hook saves those choices in the selected azd environment. It creates all five Poll configs as enabled before provisioning the Function App with the polling endpoint and deploying the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings. The combined row trigger uses logical table `account` by default, `message=7`, and organization scope `4`.
+
+The action trigger needs an available cataloged business event. If the connector returns no choices, configure an event and check the account's permissions before rerunning `azd up`.
 
 ## Optional configuration
 
 | Setting | Purpose |
 | --- | --- |
 | `DATAVERSE_TABLE_NAME` | Logical table name for the combined trigger; defaults to `account`, not an entity-set name. |
-| `DATAVERSE_ENABLE_ACTION_TRIGGER` | Set `true` to enable the action event; also set `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, and `DATAVERSE_EVENT_ACTION` to actual selector values. |
-| `DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS` | Set `true` to enable added, modified, and deleted operations. |
-| `DATAVERSE_ENTITY_SET_NAME` | For separate rows, the Table Name selector returned by `GetTables`. |
-| `DATAVERSE_ROW_SCOPE` | For separate rows, the exact selector returned by `GetScopeFilters` for that dataset/table; do not reuse combined-trigger `scope=4`. |
+| `DATAVERSE_ENTITY_SET_NAME` | Separate-row Table Name selector returned by `GetTables`. |
+| `DATAVERSE_ROW_SCOPE` | Separate-row scope returned by `GetScopeFilters`; do not reuse combined-trigger `scope=4`. |
+| `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, `DATAVERSE_EVENT_ACTION` | Exact action selector values returned by the connector. |
 | `CONNECTOR_NAMESPACE_LOCATION`, `TELEMETRY_LOCATION` | Override the namespace or monitoring region. |
 
-Optional action and separate-row triggers default to disabled. Separate row events overlap the combined trigger. After consent, the postdeploy hook creates selected optional configs and preserves matching registrations. It validates existing operations, selectors, connection, destination, and delivery mode before changes; legacy or mismatched configs require explicit cleanup or a fresh environment. Turning an option off disables its owned Poll config without proving upstream subscription removal.
+Set the selector values before `azd up` to use them without prompts. The combined logical table and separate-row table are selected independently; choose matching tables if all row triggers should monitor the same table. The hook validates existing operations, selectors, connection, destination, and delivery mode before changes; legacy or mismatched configs require explicit cleanup or a fresh environment.
 
 ### Action subscription cleanup
 
@@ -68,6 +69,6 @@ The hook creates local settings if absent and preserves existing files. After ch
 
 ## Verify and clean up
 
-Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the `OnDataverseRowChanged` log. Optional action delivery requires executing the selected action and has not been live-verified.
+Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the corresponding row-trigger logs. Action delivery requires executing the selected action on an authorized test fixture.
 
 Complete the action source-cleanup steps above before running `azd down --purge` from this folder. Never commit credentials or local settings.

@@ -52,47 +52,4 @@ foreach ($functionName in @('OnOneDriveNewFile', 'OnOneDriveUpdatedFile', 'OnOne
 
 Write-LocalSettings $values -ForceLocalSettings:$ForceLocalSettings
 
-function Get-ConnectionStatus {
-    $status = az connector-namespace connection show `
-        -g $resourceGroupName --namespace $connectorNamespaceName `
-        -n $connectorNamespaceConnectionName --query 'properties.overallStatus' -o tsv
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to read connection status.' }
-    return $status
-}
-
-Write-Host 'Authorizing OneDrive for Business connection...'
-if ((Get-ConnectionStatus) -ne 'Connected') {
-    $consentLink = $null
-    for ($attempt = 1; $attempt -le 5; $attempt++) {
-        $consentLink = az connector-namespace connection list-consent-links `
-            -g $resourceGroupName --namespace $connectorNamespaceName `
-            --connection-name $connectorNamespaceConnectionName `
-            --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" `
-            --query 'value[0].link' -o tsv 2>$null
-        if ($LASTEXITCODE -ne 0) { $consentLink = $null }
-        if (-not $consentLink -or $consentLink -eq 'null') {
-            $consentLink = az connector-namespace connection list-consent-links `
-                -g $resourceGroupName --namespace $connectorNamespaceName `
-                --connection-name $connectorNamespaceConnectionName `
-                --parameters "[{parameterName:token,redirectUrl:'https://portal.azure.com'}]" `
-                --query 'link' -o tsv 2>$null
-            if ($LASTEXITCODE -ne 0) { $consentLink = $null }
-        }
-        if ($consentLink -and $consentLink -ne 'null') { break }
-        if ($attempt -lt 5) { Start-Sleep -Seconds 5 }
-    }
-    if (-not $consentLink -or $consentLink -eq 'null') { throw 'Failed to create consent link.' }
-    Write-Host "Sign in with the account that owns the OneDrive folder: $consentLink"
-    try { Start-Process $consentLink | Out-Null }
-    catch { Write-Host 'Open the consent URL in your browser.' }
-
-    $deadline = (Get-Date).AddMinutes(5)
-    do {
-        Start-Sleep -Seconds 3
-        $status = Get-ConnectionStatus
-        if ($status -eq 'Connected') { break }
-    } while ((Get-Date) -lt $deadline)
-    if ($status -ne 'Connected') { throw 'Timed out waiting for the OneDrive connection to reach Connected status.' }
-}
-
-Write-Host 'Done. The OneDrive connection is authorized; Bicep manages the 4 Poll triggers.'
+Write-Host 'Done. local.settings.json is ready for local runs; the enabled Poll triggers were created by the triggers layer.'

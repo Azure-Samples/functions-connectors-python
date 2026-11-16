@@ -17,12 +17,6 @@ param location string
 param connectorNamespaceLocation string = 'westcentralus'
 
 param applicationInsightsLocation string = ''
-param mailFolderPath string = 'Inbox'
-param calendarId string = 'Calendar'
-param sharedMailboxAddress string = ''
-param sharedMailboxFolderId string = 'Inbox'
-param enableTriggers bool = true
-
 metadata name = 'Azure Functions Office 365 Polling Connector Trigger (Python)'
 metadata description = 'Connector Namespace Poll delivery using managed identity, without a callback URL.'
 
@@ -153,112 +147,21 @@ module connectorNamespace './connector-namespace.bicep' = {
   }
 }
 
-module pollTriggers './poll-triggers.bicep' = {
-  scope: rg
-  name: 'poll-triggers'
-  params: {
-    namespaceName: connectorNamespace.outputs.name
-    connectionName: connectorNamespace.outputs.connectionName
-    mailFolderPath: mailFolderPath
-    calendarId: calendarId
-    sharedMailboxAddress: sharedMailboxAddress
-    sharedMailboxFolderId: sharedMailboxFolderId
-    enableTriggers: enableTriggers
-  }
-}
-
-var allAppSettings = union({
-  AzureWebJobsStorage__credential: 'managedidentity'
-  AzureWebJobsStorage__accountName: storageAccount.outputs.name
-  APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-  APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
-  PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-  ConnectorNamespace__credential: 'managedidentity'
-  ConnectorNamespace__pollingEndpoint: pollTriggers.outputs.pollingEndpoint
-  'AzureWebJobs.OnSharedMailboxNewEmail.Disabled': string(empty(sharedMailboxAddress))
-}, pollTriggers.outputs.triggerConfigSettings)
-
-module functionApp 'br/public:avm/res/web/site:0.22.0' = {
-  scope: rg
-  name: functionAppName
-  params: {
-    name: functionAppName
-    location: location
-    tags: union(tags, { 'azd-service-name': 'function-app' })
-    kind: 'functionapp,linux'
-    serverFarmResourceId: functionAppPlan.outputs.resourceId
-    httpsOnly: true
-    managedIdentities: {
-      systemAssigned: true
-    }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storageAccount.outputs.primaryBlobEndpoint}${deploymentStorageContainerName}'
-          authentication: {
-            type: 'SystemAssignedIdentity'
-          }
-        }
-      }
-      scaleAndConcurrency: {
-        instanceMemoryMB: 2048
-        maximumInstanceCount: 100
-        alwaysReady: []
-      }
-      runtime: {
-        name: 'python'
-        version: '3.14'
-      }
-    }
-    siteConfig: {
-      minTlsVersion: '1.2'
-    }
-    configs: [
-      {
-        name: 'appsettings'
-        properties: allAppSettings
-      }
-    ]
-  }
-}
-
-// Grant access only after the app has created its system-assigned identity.
-module functionAccess './function-access.bicep' = {
-  name: 'function-access'
-  scope: rg
-  params: {
-    functionAppPrincipalId: functionApp.outputs.systemAssignedMIPrincipalId!
-    storageAccountName: storageAccount.outputs.name
-    appInsightsName: monitoring.outputs.name
-    connectorNamespaceName: connectorNamespace.outputs.name
-    connectorConnectionName: connectorNamespace.outputs.connectionName
-  }
-}
-
-output office365SharedMailboxAddress string = sharedMailboxAddress
-output office365TriggerState string = enableTriggers ? 'Enabled' : 'Disabled'
-
 @description('The resource ID of the created Resource Group.')
 output resourceGroupResourceId string = rg.id
 
 @description('The name of the created Resource Group.')
 output resourceGroupName string = rg.name
 
-@description('The name of the created Function App.')
-output functionAppName string = functionApp.outputs.name
+@description('The name of the Function App to be created after the triggers.')
+output functionAppName string = functionAppName
 
-@description('The default hostname of the created Function App.')
-output functionAppDefaultHostname string = functionApp.outputs.defaultHostname
+output functionAppPlanName string = functionAppPlan.outputs.name
+output storageAccountName string = storageAccount.outputs.name
+output appInsightsName string = monitoring.outputs.name
 
 @description('The name of the created Connector Namespace.')
 output connectorNamespaceName string = connectorNamespace.outputs.name
 
 @description('The name of the Office 365 connection on the Connector Namespace.')
 output connectorNamespaceConnectionName string = connectorNamespace.outputs.connectionName
-
-@description('Base endpoint for receiving and acknowledging connector events.')
-output connectorPollingEndpoint string = pollTriggers.outputs.pollingEndpoint
-
-@description('Trigger config names used by the polling decorators.')
-output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings

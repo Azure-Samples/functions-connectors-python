@@ -13,13 +13,29 @@ function Get-DataverseConfigurations {
             throw 'Invalid or repeated trigger configuration continuation URL.'
         }
         $path = Join-Path ([IO.Path]::GetTempPath()) "dataverse-inventory-$([guid]::NewGuid().ToString('N')).json"
+        $parametersPath = Join-Path ([IO.Path]::GetTempPath()) "dataverse-inventory-query-$([guid]::NewGuid().ToString('N')).json"
         $owned = $false
+        $parametersOwned = $false
         $failure = $null
         try {
+            $query = [System.Web.HttpUtility]::ParseQueryString($pageUri.Query)
+            $parameters = @{}
+            foreach ($key in $query.AllKeys) {
+                if (-not $key -or @($query.GetValues($key)).Count -ne 1) {
+                    throw 'Invalid trigger configuration continuation parameters.'
+                }
+                $parameters[$key] = $query.GetValues($key)[0]
+            }
+            if ($parameters['api-version'] -cne '2026-05-01-preview') {
+                throw 'Invalid trigger configuration API version.'
+            }
+            Write-PrivateJson $parametersPath ($parameters | ConvertTo-Json -Compress)
+            $parametersOwned = $true
             $stream = New-PrivateStagingStream $path
             $owned = $true
             $stream.Dispose()
-            az rest --method get --url $nextLink --output-file $path -o none 2>$null
+            az rest --method get --url $pageUri.GetLeftPart([UriPartial]::Path) `
+                --url-parameters "@$parametersPath" --output-file $path -o none 2>$null
             if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing Dataverse subscriptions.' }
             $json = Get-Content -LiteralPath $path -Raw -Encoding utf8
             $page = $json | ConvertFrom-Json -AsHashtable -Depth 100
@@ -32,9 +48,14 @@ function Get-DataverseConfigurations {
             }
             $nextLink = [string]$page.nextLink
         } catch { $failure = $_; throw } finally {
-            try { if ($owned -and [IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch {
-                if ($null -eq $failure) { throw 'Could not clean private Dataverse inventory staging file.' }
-                Write-Warning 'Could not clean private inventory staging file; original failure preserved.'
+            $cleanupFailed = $false
+            foreach ($entry in @(@($owned, $path), @($parametersOwned, $parametersPath))) {
+                try { if ($entry[0] -and [IO.File]::Exists($entry[1])) { [IO.File]::Delete($entry[1]) } }
+                catch { $cleanupFailed = $true }
+            }
+            if ($cleanupFailed) {
+                if ($null -eq $failure) { throw 'Could not clean private Dataverse inventory staging files.' }
+                Write-Warning 'Could not clean private inventory staging files; original failure preserved.'
             }
         }
     }
@@ -43,7 +64,8 @@ function Get-DataverseConfigurations {
 function Connect-Dataverse {
     param($Outputs)
     function Get-Status {
-        $status = az connector-namespace connection show -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
+        $status = az connector-namespace connection show --subscription $Outputs.AZURE_SUBSCRIPTION_ID `
+            -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
             -n $Outputs.connectorNamespaceConnectionName --query properties.overallStatus -o tsv 2>$null
         if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$status)) { throw 'Could not read the Dataverse connection status.' }
         return ([string]$status).Trim()
@@ -52,7 +74,8 @@ function Connect-Dataverse {
     $link = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
         foreach ($query in @('value[0].link', 'link')) {
-            $link = az connector-namespace connection list-consent-links -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
+            $link = az connector-namespace connection list-consent-links --subscription $Outputs.AZURE_SUBSCRIPTION_ID `
+                -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
                 --connection-name $Outputs.connectorNamespaceConnectionName --parameters "[{parameterName:token,redirectUrl:'https://connectors.azure.com'}]" `
                 --query $query -o tsv 2>$null
             if ($LASTEXITCODE -ne 0) { throw 'Could not request a Dataverse consent link.' }

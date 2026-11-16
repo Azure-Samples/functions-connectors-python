@@ -18,13 +18,10 @@ param dataverseEnvironmentUrl string
 
 @description('Logical table name, for example account, not the accounts entity set.')
 param dataverseTableName string = 'account'
-param enableSeparateRowTriggers bool = false
-@minLength(1)
 @description('Table Name selector returned by GetTables for the selected environment.')
-param dataverseEntitySetName string = 'accounts'
-@description('Exact GetScopeFilters selector; required when separate row triggers are enabled.')
+param dataverseEntitySetName string = ''
+@description('Exact GetScopeFilters selector for the selected environment and table.')
 param dataverseRowScope string = ''
-param enableActionTrigger bool = false
 param eventCatalog string = ''
 param eventCategory string = ''
 param eventTable string = ''
@@ -34,7 +31,7 @@ param eventAction string = ''
 param userPrincipalId string = deployer().objectId
 
 metadata name = 'Azure Functions Microsoft Dataverse Webhook Delivery (Python)'
-metadata description = 'Current Dataverse row changes and optional action-performed events with webhook delivery.'
+metadata description = 'Dataverse row changes and action-performed events with webhook delivery.'
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -156,10 +153,6 @@ var allAppSettings = {
   APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
   APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
   ConnectorNamespace__credential: 'managedidentity'
-  'AzureWebJobs.OnDataverseActionPerformed.Disabled': toLower(string(!enableActionTrigger))
-  'AzureWebJobs.OnDataverseRowAdded.Disabled': toLower(string(!enableSeparateRowTriggers))
-  'AzureWebJobs.OnDataverseRowModified.Disabled': toLower(string(!enableSeparateRowTriggers))
-  'AzureWebJobs.OnDataverseRowDeleted.Disabled': toLower(string(!enableSeparateRowTriggers))
 }
 
 module functionApp 'br/public:avm/res/web/site:0.22.0' = {
@@ -230,8 +223,6 @@ output dataverseEnvironmentUrl string = dataverseEnvironmentUrl
 output dataverseTableName string = dataverseTableName
 output dataverseEntitySetName string = dataverseEntitySetName
 output dataverseRowScope string = dataverseRowScope
-output enableSeparateRowTriggers bool = enableSeparateRowTriggers
-output enableActionTrigger bool = enableActionTrigger
 output eventCatalog string = eventCatalog
 output eventCategory string = eventCategory
 output eventTable string = eventTable

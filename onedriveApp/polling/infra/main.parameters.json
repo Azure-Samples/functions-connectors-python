@@ -6,7 +6,6 @@
     "location": { "value": "${AZURE_LOCATION}" },
     "connectorNamespaceLocation": { "value": "${CONNECTOR_NAMESPACE_LOCATION=westcentralus}" },
     "telemetryLocation": { "value": "${TELEMETRY_LOCATION=eastus2}" },
-    "userPrincipalId": { "value": "${AZURE_PRINCIPAL_ID}" },
-    "folderId": { "value": "${ONEDRIVE_FOLDER_ID}" }
+    "userPrincipalId": { "value": "${AZURE_PRINCIPAL_ID}" }
   }
 }

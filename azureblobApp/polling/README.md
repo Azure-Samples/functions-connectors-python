@@ -35,7 +35,7 @@ Deployment creates a Function App, host storage, monitoring, a separate monitore
 | `azd hooks run postdeploy` | Verify connection authentication and readiness and create local settings if absent. |
 | `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings` | Replace existing local settings rather than preserving them. |
 
-The hook waits up to five minutes for the connection to become **Ready** or **Connected**. Storage RBAC may take longer to propagate. If source polling reports authorization errors, verify the namespace identity's source role and connection access policy, allow propagation, and rerun the hook.
+The hook waits up to five minutes for the connection to become **Ready** or **Connected**. Storage RBAC may take longer to propagate. If source polling reports authorization errors, verify the namespace identity's source role, allow propagation, and rerun the hook.
 
 Reprovisioning an existing environment creates a separate `-mi` connection and switches the trigger to it; rerunning the hook alone does not migrate an OAuth connection. The old connection is retained.
 

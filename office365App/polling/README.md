@@ -18,7 +18,7 @@ This folder is a standalone app. Run all commands from this folder; no parent or
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - An Office 365 mailbox/calendar and an account permitted to authorize the connection and manage trigger configurations.
 - A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell or a POSIX shell.
 - For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
@@ -32,26 +32,23 @@ For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the templ
 az login
 azd auth login
 azd env new office365-polling
-azd env set OFFICE365_MAIL_FOLDER Inbox
-azd env set OFFICE365_CALENDAR_ID '<actual connector calendar ID>'
 azd up
 ```
 
-Authorize with the mailbox account when prompted. The hook preserves existing consent. Deployment creates the Function App, identity-based storage, monitoring, namespace, connection, and selected Poll configs.
+Authorize with the mailbox account, then select a mail folder and calendar from the connector's choices. The hook preserves existing consent and saves the selections in the azd environment. It creates enabled Poll configs after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
 
 ## Optional configuration
 
 | Setting or action | Purpose |
 | --- | --- |
-| `OFFICE365_MAIL_FOLDER` | Personal email folder; defaults to `Inbox`. |
-| `OFFICE365_CALENDAR_ID` | Actual connector calendar ID; replace the `Calendar` placeholder. |
+| `OFFICE365_MAIL_FOLDER` | Skip the folder picker with `Inbox` or a connector-returned folder ID. |
+| `OFFICE365_CALENDAR_ID` | Skip the calendar picker with a connector-returned calendar ID. |
 | `OFFICE365_SHARED_MAILBOX_ADDRESS` | Enable shared-mailbox email; the account needs full mailbox access. Empty by default. |
-| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Shared mailbox folder; defaults to `Inbox`. |
-| `OFFICE365_ENABLE_TRIGGERS` | Set `false` to provision disabled sources without waiting for consent; defaults to `true`. |
+| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Skip the shared-mailbox folder picker with a connector-returned folder ID. |
 | `CONNECTOR_NAMESPACE_LOCATION`, `APPLICATION_INSIGHTS_LOCATION` | Override the namespace or monitoring region. |
 | `azd hooks run postdeploy` | Rerun setup while preserving existing local settings. |
 
-After changing source parameters, run `azd provision` and the postdeploy hook. Clearing the shared mailbox address disables an existing sample-owned shared Poll config without deleting it. Use `-ConsentLinkOnly` or `--consent-link-only` to obtain a consent link without writing settings or triggers, then rerun the hook after consent.
+After changing source parameters, run `azd up`. Clearing the shared mailbox address disables an existing sample-owned shared Poll config without deleting it. To inspect consent without writing settings or triggers, run `python ./infra/scripts/setup.py --mode polling --project . --consent-link-only` after provisioning the base layer.
 
 ## Local development
 

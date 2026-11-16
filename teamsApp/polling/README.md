@@ -22,8 +22,8 @@ This folder is a standalone app. Run all commands from this folder; no parent or
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- PowerShell 7.3+ on every platform, including when using the Bash wrapper.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- PowerShell 7.3+ and Python on every platform, including when using the Bash wrapper; set `PYTHON` to an interpreter path if needed.
 - A Teams account with access to the selected team/channel and permission to authorize the connection. Optional events may require additional scopes, licenses, and policies.
 - A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 - `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions, and `azurefunctions-extensions-connectors>=1.0.0b4`. The requirements file selects the SDK family.
@@ -36,16 +36,14 @@ For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the templ
 az login
 azd auth login
 azd env new teams-polling
-azd env set TEAMS_GROUP_ID "<team / Microsoft 365 group object ID>"
-azd env set TEAMS_CHANNEL_ID "<URL-decoded channel ID>"
 azd up
 ```
 
-Use IDs from the Teams channel link, not display names. Authorize with the Teams account to monitor. Deployment creates the Function App, storage, monitoring, namespace, OAuth connection, and selected Poll configs.
+Authorize with the Teams account to monitor, then select a team and channel from the connector's choices. The hook saves their IDs in the azd environment. It creates enabled Poll configs after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
 
 ## Optional configuration
 
-Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the namespace or monitoring region. To enable optional events, copy selected entries from `infra/additional-triggers.example.json` into `infra/additional-triggers.json` and replace placeholders with actual connector values:
+Set `TEAMS_GROUP_ID` and `TEAMS_CHANNEL_ID` to connector-returned IDs before `azd up` to skip the pickers; use IDs, not display names. Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the namespace or monitoring region. To enable optional events, copy selected entries from `infra/additional-triggers.example.json` into `infra/additional-triggers.json` and replace placeholders with actual connector values:
 
 | Operation | Required parameters |
 | --- | --- |
@@ -55,7 +53,7 @@ Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the names
 | [`WebhookMessageReactionTrigger`](https://learn.microsoft.com/connectors/teams/#when-someone-reacted-to-a-message-in-chat) | `reactionKey`, `frequency`, `runningPolicy`, `threadType`, and dynamic `requestBody`. |
 | [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available), [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `scopeType` and dynamic `body`; meeting policies and licenses apply. |
 
-Preserve operation/parameter casing and JSON types. Run `azd up` to apply the selection. The hook disables deselected sample-owned optional Poll configs without deleting them; it does not prove upstream subscription teardown. Existing settings are preserved. Use `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace local settings after changing selection.
+Preserve operation/parameter casing and JSON types. Run `azd up` to apply the selection. The hook disables deselected sample-owned optional Poll configs without deleting them; it does not prove upstream subscription teardown. Existing local settings are preserved. Use `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace local settings after changing selection.
 
 ## Local development
 

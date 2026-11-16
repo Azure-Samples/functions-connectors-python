@@ -13,9 +13,8 @@ This folder is a standalone app. Run all commands from this folder; no parent or
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - A OneDrive for Business account and permission to authorize the connection.
-- A **connector-returned folder ID** for that account. If necessary, obtain it from an existing authorized OneDrive connection as described below.
 - PowerShell 7.3+ or Bash, jq 1.6+, and GNU coreutils for the hook. The preprovision hook also requires Python; set `PYTHON` to an interpreter path if needed.
 - A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 - `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions, and `azurefunctions-extensions-connectors>=1.0.0b4`. The requirements file selects the SDK family.
@@ -28,13 +27,14 @@ For Python 3.12 and older, set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the templ
 az login
 azd auth login
 azd env new onedrive-polling
-azd env set ONEDRIVE_FOLDER_ID '<connector-returned folder ID>'
 azd up
 ```
 
-Authorize the new connection with the account that owns the selected folder. The required ID has no default: a folder name, path, or literal `root` is invalid. The connector can accept `root` at registration but fails trigger evaluation with `Invalid fileId`.
+Authorize the new connection with the account that owns the folder, then select the folder interactively. The deployment creates enabled Poll triggers after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
 
-### Find a folder ID
+To skip the picker, set `ONEDRIVE_FOLDER_ID` to a connector-returned folder ID before running `azd up`. A folder name, path, or literal `root` is invalid. The connector can accept `root` at registration but fails trigger evaluation with `Invalid fileId`.
+
+### Find a folder ID manually
 
 Use an existing authorized OneDrive connection. For the top-level folder, invoke `GetFileByPath`:
 
@@ -54,7 +54,8 @@ For subfolders, list `/datasets/default/folders`, then `/datasets/default/folder
 | Setting or action | Purpose |
 | --- | --- |
 | `TELEMETRY_LOCATION` | Monitoring region; defaults to `eastus2`. |
-| `azd hooks run postdeploy` | Rerun consent/setup and create local settings if absent. |
+| `ONEDRIVE_FOLDER_ID` | Skip interactive folder selection with a connector-returned ID. |
+| `azd hooks run postdeploy` | Create local settings if absent. |
 | `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings` | Replace existing local settings. |
 
 ## Local development

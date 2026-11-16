@@ -12,11 +12,6 @@ param telemetryLocation string = 'eastus2'
 @metadata({ azd: { type: 'principalId' } })
 param userPrincipalId string = deployer().objectId
 
-@minLength(1)
-param teamsGroupId string
-@minLength(1)
-param teamsChannelId string
-
 metadata name = 'Azure Functions Teams Connector Polling (Python)'
 metadata description = 'Teams events with Poll delivery on Python 3.14 Flex Consumption.'
 
@@ -124,78 +119,10 @@ module connectorNamespace './connector-namespace.bicep' = {
   }
 }
 
-module pollTriggers './poll-triggers.bicep' = {
-  name: 'poll-triggers'
-  scope: rg
-  params: {
-    namespaceName: connectorNamespace.outputs.name
-    connectionName: connectorNamespace.outputs.connectionName
-    teamsGroupId: teamsGroupId
-    teamsChannelId: teamsChannelId
-  }
-}
-
-var allAppSettings = union({
-  AzureWebJobsStorage__credential: 'managedidentity'
-  AzureWebJobsStorage__accountName: storageAccount.outputs.name
-  APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-  APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
-  PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-  ConnectorNamespace__credential: 'managedidentity'
-  ConnectorNamespace__pollingEndpoint: pollTriggers.outputs.pollingEndpoint
-}, pollTriggers.outputs.triggerConfigSettings)
-
-module functionApp 'br/public:avm/res/web/site:0.22.0' = {
-  name: 'function-app'
-  scope: rg
-  params: {
-    name: functionAppName
-    location: location
-    tags: union(tags, { 'azd-service-name': 'function-app' })
-    kind: 'functionapp,linux'
-    serverFarmResourceId: functionAppPlan.outputs.resourceId
-    httpsOnly: true
-    managedIdentities: { systemAssigned: true }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storageAccount.outputs.primaryBlobEndpoint}${deploymentStorageContainerName}'
-          authentication: {
-            type: 'SystemAssignedIdentity'
-          }
-        }
-      }
-      scaleAndConcurrency: {
-        instanceMemoryMB: 2048
-        maximumInstanceCount: 100
-      }
-      runtime: { name: 'python', version: '3.14' }
-    }
-    siteConfig: {
-      minTlsVersion: '1.2'
-      functionsRuntimeScaleMonitoringEnabled: false
-    }
-    configs: [{ name: 'appsettings', properties: allAppSettings }]
-  }
-}
-
-// Assign permissions after app creation to avoid a storage/app dependency cycle.
-module functionAppAccess './function-access.bicep' = {
-  name: 'function-app-access'
-  scope: rg
-  params: {
-    principalId: functionApp.outputs.systemAssignedMIPrincipalId!
-    storageAccountName: storageAccount.outputs.name
-    appInsightsName: monitoring.outputs.name
-    connectorNamespaceName: connectorNamespace.outputs.name
-    connectionName: connectorNamespace.outputs.connectionName
-  }
-}
-
 output resourceGroupName string = rg.name
-output functionAppName string = functionApp.outputs.name
+output functionAppName string = functionAppName
+output functionAppPlanName string = functionAppPlan.outputs.name
+output storageAccountName string = storageAccount.outputs.name
+output appInsightsName string = monitoring.outputs.name
 output connectorNamespaceName string = connectorNamespace.outputs.name
 output connectorNamespaceConnectionName string = connectorNamespace.outputs.connectionName
-output connectorPollingEndpoint string = pollTriggers.outputs.pollingEndpoint
-output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings

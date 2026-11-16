@@ -7,7 +7,7 @@ This folder is a standalone Function App. Run all commands from this folder; no 
 ## Prerequisites
 
 - A supported Python version, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), Azure CLI, and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
-- An existing Connector Namespace, authorized connection, and enabled Poll trigger config. Grant both the namespace identity and receiving app/developer connection access. See the [Poll setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#poll-delivery).
+- An existing Connector Namespace, authorized connection, and enabled Poll trigger config. Grant connection access to the receiving app and the developer running locally; the namespace already has access to its own connections. See the [Poll setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#poll-delivery).
 - An existing Python Function App with host and deployment storage for Azure deployment.
 - `azure-functions>=2.4.0b1` for Python 3.13+ or `azure-functions>=1.27.0b1` for older supported versions. The requirements file selects the SDK family.
 

@@ -2,13 +2,13 @@
 
 Connector Namespace sends Dataverse events to the Functions connector callback, authenticated with the `connector_extension` system key. All handlers use raw `str` bindings and log only the trigger name.
 
-| Function | Connector operation | Selection |
-| --- | --- | --- |
-| `OnDataverseRowChanged` | [`SubscribeWebhookTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-a-row-is-added,-modified-or-deleted) | Default |
-| `OnDataverseActionPerformed` | [`BusinessEventsTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-an-action-is-performed) | Opt-in |
-| `OnDataverseRowAdded` | `SubscribeOnNewItems` | Opt-in |
-| `OnDataverseRowModified` | `SubscribeOnUpdatedItems` | Opt-in |
-| `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` | Opt-in |
+| Function | Connector operation |
+| --- | --- |
+| `OnDataverseRowChanged` | [`SubscribeWebhookTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-a-row-is-added,-modified-or-deleted) |
+| `OnDataverseActionPerformed` | [`BusinessEventsTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-an-action-is-performed) |
+| `OnDataverseRowAdded` | `SubscribeOnNewItems` |
+| `OnDataverseRowModified` | `SubscribeOnUpdatedItems` |
+| `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` |
 
 This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
@@ -32,24 +32,25 @@ azd env set DATAVERSE_ENVIRONMENT_URL https://contoso.crm.dynamics.com
 azd up
 ```
 
-Authorize with an account that can register Dataverse events. The hook registers selected webhook configs using the deployed app's actual hostname and connector extension system key. The default combined row trigger uses logical table `account`, `message=7`, and organization scope `4`.
+Authorize with an account that can register Dataverse events. After consent, choose the separate-row table and scope, and the action catalog, category, table, and action from the connector's returned options. The hook saves those choices in the selected azd environment and registers all five webhook configs using the deployed app's hostname and connector extension system key. The combined row trigger uses logical table `account` by default, `message=7`, and organization scope `4`.
+
+The action trigger needs an available cataloged business event. If the connector returns no choices, configure an event and check the account's permissions before rerunning `azd hooks run postdeploy`.
 
 ## Optional configuration
 
 | Setting | Purpose |
 | --- | --- |
 | `DATAVERSE_TABLE_NAME` | Logical table name for the combined trigger; defaults to `account`, not an entity-set name. |
-| `DATAVERSE_ENABLE_ACTION_TRIGGER` | Set `true` to enable the action event; also set `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, and `DATAVERSE_EVENT_ACTION` to actual selector values. |
-| `DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS` | Set `true` to enable added, modified, and deleted operations. |
-| `DATAVERSE_ENTITY_SET_NAME` | For separate rows, the Table Name selector returned by `GetTables`. |
-| `DATAVERSE_ROW_SCOPE` | For separate rows, the exact selector returned by `GetScopeFilters` for that dataset/table; do not reuse combined-trigger `scope=4`. |
+| `DATAVERSE_ENTITY_SET_NAME` | Separate-row Table Name selector returned by `GetTables`. |
+| `DATAVERSE_ROW_SCOPE` | Separate-row scope returned by `GetScopeFilters`; do not reuse combined-trigger `scope=4`. |
+| `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, `DATAVERSE_EVENT_ACTION` | Exact action selector values returned by the connector. |
 | `CONNECTOR_NAMESPACE_LOCATION`, `TELEMETRY_LOCATION` | Override the namespace or monitoring region. |
 
-Optional action and separate-row triggers default to disabled. Separate row events overlap the combined trigger. The hook validates existing operations, selectors, connections, destinations, callbacks, and delivery modes before changes. Matching enabled configs are preserved; disabled, legacy, or mismatched row configs require explicit cleanup or a fresh environment. Turning off separate rows removes only matching owned namespace configs.
+Set the selector values before `azd up` to use them without prompts. The combined logical table and separate-row table are selected independently; choose matching tables if all row triggers should monitor the same table. The hook validates existing operations, selectors, connections, destinations, callbacks, and delivery modes before changes. Matching enabled configs are preserved; disabled, legacy, or mismatched row configs require explicit cleanup or a fresh environment.
 
 ### Action subscription cleanup
 
-The hook maintains an ignored `.azure/dataverse-action-cleanup-*.json` journal bound to the exact action registration. Disabling an action removes only the owned namespace config and fails until source cleanup is verified. Inspect Dataverse for the exact owned `callbackregistration`, verify its selectors and destination, remove only that registration, and confirm GET returns 404. Only then archive the matching journal outside this app and rerun. Preserve unrelated registrations; the scripts do not automatically delete Dataverse callbacks.
+The hook maintains an ignored `.azure/dataverse-action-cleanup-*.json` journal bound to the exact action registration. Before replacing an action or deleting resources, inspect Dataverse for the exact owned `callbackregistration`, verify its selectors and destination, remove only that registration, and confirm GET returns 404. Only then archive the matching journal outside this app. Preserve unrelated registrations; the scripts do not automatically delete Dataverse callbacks.
 
 ## Local development
 
@@ -70,6 +71,6 @@ func start --enableAuth
 
 ## Verify and clean up
 
-Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the `OnDataverseRowChanged` log. Optional action delivery requires executing the selected action and has not been live-verified.
+Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the corresponding row-trigger logs. Action delivery requires executing the selected action on an authorized test fixture.
 
 Complete the action source-cleanup steps above before running `azd down --purge` from this folder. Never commit callback keys, credentials, or local settings.

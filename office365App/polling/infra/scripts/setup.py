@@ -21,7 +21,7 @@ import time
 import webbrowser
 from contextlib import contextmanager
 from pathlib import Path
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qsl, quote, urlsplit
 
 
 OPERATIONS = {
@@ -166,7 +166,14 @@ def list_triggers(collection: str) -> list[dict]:
                 parsed.fragment or url in visited):
             raise ValueError("Invalid or repeated trigger continuation URL.")
         visited.add(url)
-        page = cli("az", "rest", "--method", "get", "--url", url, "-o", "json")
+        pairs = parse_qsl(parsed.query, keep_blank_values=True)
+        if (len({key for key, _ in pairs}) != len(pairs) or
+                dict(pairs).get("api-version") != API_VERSION):
+            raise ValueError("Invalid trigger continuation parameters.")
+        with private_json(dict(pairs)) as parameters:
+            page = cli("az", "rest", "--method", "get", "--url",
+                       f"{parsed.scheme}://{parsed.netloc}{parsed.path}",
+                       "--url-parameters", parameters, "-o", "json")
         if not isinstance(page, dict) or not isinstance(page.get("value"), list):
             raise ValueError("Invalid trigger list response.")
         resources.extend(page["value"])
@@ -287,9 +294,10 @@ def configure_webhooks(outputs: dict, collection: str, resources: list[dict],
         print("Shared mailbox listener disabled. Any prior webhook source must be disabled or deleted separately.")
 
 
-def authorize(outputs: dict, *, link_only: bool) -> bool:
+def authorize(outputs: dict, *, link_only: bool, defer_disabled: bool = False) -> bool:
     """Return whether consent allows setup; link-only always defers writes."""
-    arguments = ("-g", outputs["resourceGroupName"], "--namespace", outputs["connectorNamespaceName"])
+    arguments = ("--subscription", outputs["AZURE_SUBSCRIPTION_ID"], "-g",
+                 outputs["resourceGroupName"], "--namespace", outputs["connectorNamespaceName"])
 
     def status() -> str:
         connection = cli("az", "connector-namespace", "connection", "show", *arguments,
@@ -322,7 +330,7 @@ def authorize(outputs: dict, *, link_only: bool) -> bool:
         raise ValueError("Could not obtain an HTTPS Office365 consent link.")
     print("Authorize the Office365 connection with the mailbox account to monitor.")
     print("Consent URL: " + link)
-    if link_only or outputs["office365TriggerState"] == "Disabled":
+    if link_only or (defer_disabled and outputs.get("office365TriggerState") == "Disabled"):
         return False
     try:
         webbrowser.open(link)
@@ -342,6 +350,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--mode", choices=("polling", "webhook"), required=True)
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--force-local-settings", action="store_true")
+    parser.add_argument("--local-settings-only", action="store_true")
+    parser.add_argument("--prepare-app", action="store_true")
     parser.add_argument("--consent-link-only", action="store_true",
                         help="Show consent status or a link without opening a browser, waiting, or writing settings or triggers.")
     parser.add_argument("--callback-base-url")
@@ -352,16 +362,36 @@ def main(argv: list[str] | None = None) -> None:
     outputs = cli("azd", "env", "get-values", "--output", "json")
     if not isinstance(outputs, dict):
         raise ValueError("Invalid azd environment outputs.")
-    required(outputs, "resourceGroupName", "connectorNamespaceName", "connectorNamespaceConnectionName",
-             "office365TriggerState")
-    if outputs["office365TriggerState"] not in ("Enabled", "Disabled"):
-        raise ValueError("Invalid Office365 trigger state.")
+    required(outputs, "AZURE_SUBSCRIPTION_ID", "resourceGroupName", "connectorNamespaceName",
+             "connectorNamespaceConnectionName")
+    if options.mode == "webhook":
+        required(outputs, "office365TriggerState")
+        if outputs["office365TriggerState"] not in ("Enabled", "Disabled"):
+            raise ValueError("Invalid Office365 trigger state.")
+    if options.consent_link_only:
+        if options.local_settings_only or options.prepare_app:
+            parser.error("--consent-link-only cannot be combined with another setup phase.")
+        cli("az", "extension", "show", "--name", "connector-namespace", "-o", "json")
+        authorize(outputs, link_only=True)
+        return
+    if options.local_settings_only or options.prepare_app:
+        if (options.mode != "polling" or
+                sum((options.local_settings_only, options.prepare_app, options.consent_link_only)) != 1):
+            parser.error("Choose only one polling setup phase.")
+        values = local_values(outputs, options.mode)
+        if options.local_settings_only:
+            write_local_settings(options.project.resolve() / "local.settings.json", values,
+                                 force=options.force_local_settings)
+        else:
+            collection = namespace_url(outputs)
+            disable_shared_poll(outputs, collection, list_triggers(collection))
+        return
     values = local_values(outputs, options.mode)
     if options.mode == "webhook":
         required(outputs, "office365MailFolder", "office365CalendarId")
     cli("az", "extension", "show", "--name", "connector-namespace", "-o", "json")
     collection = namespace_url(outputs)
-    if not authorize(outputs, link_only=options.consent_link_only):
+    if not authorize(outputs, link_only=False, defer_disabled=options.mode == "webhook"):
         print("Setup deferred; rerun the hook after consent without --consent-link-only.")
         return
     resources = list_triggers(collection)

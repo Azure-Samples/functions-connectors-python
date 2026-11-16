@@ -4,8 +4,6 @@ param functionAppName string
 @minLength(1)
 param environmentUrl string
 param tableName string = 'account'
-param enableSeparateRowTriggers bool = false
-param enableActionTrigger bool = false
 
 var organization = endsWith(environmentUrl, '/') ? substring(environmentUrl, 0, length(environmentUrl) - 1) : environmentUrl
 var destination = {
@@ -49,11 +47,7 @@ output pollingEndpoint string = endsWith(toLower(endpointBase), '/api')
 output triggerConfigSettings object = {
   OnDataverseRowChangedTriggerConfigName: rowTrigger.name
   OnDataverseActionPerformedTriggerConfigName: 'dataverse-ondataverseactionperformed'
-  'AzureWebJobs.OnDataverseActionPerformed.Disabled': toLower(string(!enableActionTrigger))
   OnDataverseRowAddedTriggerConfigName: 'dataverse-ondataverserowadded'
   OnDataverseRowModifiedTriggerConfigName: 'dataverse-ondataverserowmodified'
   OnDataverseRowDeletedTriggerConfigName: 'dataverse-ondataverserowdeleted'
-  'AzureWebJobs.OnDataverseRowAdded.Disabled': toLower(string(!enableSeparateRowTriggers))
-  'AzureWebJobs.OnDataverseRowModified.Disabled': toLower(string(!enableSeparateRowTriggers))
-  'AzureWebJobs.OnDataverseRowDeleted.Disabled': toLower(string(!enableSeparateRowTriggers))
 }

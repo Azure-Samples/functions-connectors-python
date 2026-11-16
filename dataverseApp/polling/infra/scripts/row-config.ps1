@@ -20,6 +20,27 @@ function Get-DataverseRowParameters {
     )
 }
 
+function Assert-DataverseCombinedRowConfig {
+    param($Config, $Outputs)
+    $expected = @{
+        organization = $Outputs.dataverseEnvironmentUrl.TrimEnd('/')
+        entityname = [string]$Outputs.dataverseTableName
+        message = '7'
+        scope = '4'
+    }
+    $actual = @{}
+    if (@($Config.properties.parameters).Count -ne $expected.Count) { throw 'Unexpected combined Dataverse row selectors.' }
+    foreach ($parameter in $Config.properties.parameters) {
+        if (-not $expected.ContainsKey($parameter.name) -or $actual.ContainsKey($parameter.name)) {
+            throw 'Unexpected or ambiguous combined Dataverse row selector.'
+        }
+        $actual[$parameter.name] = [string]$parameter.value
+    }
+    foreach ($name in $expected.Keys) {
+        if ($actual[$name] -cne $expected[$name]) { throw "Combined Dataverse row selector '$name' differs." }
+    }
+}
+
 function Assert-DataverseRowConfig {
     param($Config, $Trigger, $Outputs, [ValidateSet('Poll', 'Webhook')] [string] $Mode)
     $name = if ($Mode -eq 'Poll') {

@@ -17,7 +17,7 @@ import time
 import webbrowser
 from contextlib import contextmanager
 from pathlib import Path
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qsl, quote, urlsplit
 
 
 API_VERSION = "2026-05-01-preview"
@@ -202,7 +202,14 @@ def list_triggers(collection: str) -> list[dict]:
                 parsed.path.rstrip("/").lower() != target.path.lower() or parsed.fragment or url in visited):
             raise ValueError("Invalid or repeated trigger continuation URL.")
         visited.add(url)
-        page = cli("az", "rest", "--method", "get", "--url", url, "-o", "json")
+        pairs = parse_qsl(parsed.query, keep_blank_values=True)
+        if (len({key for key, _ in pairs}) != len(pairs) or
+                dict(pairs).get("api-version") != API_VERSION):
+            raise ValueError("Invalid trigger continuation parameters.")
+        with private_json(dict(pairs)) as parameters:
+            page = cli("az", "rest", "--method", "get", "--url",
+                       f"{parsed.scheme}://{parsed.netloc}{parsed.path}",
+                       "--url-parameters", parameters, "-o", "json")
         if not isinstance(page, dict) or not isinstance(page.get("value"), list):
             raise ValueError("Invalid trigger list response.")
         resources.extend(page["value"])
@@ -228,6 +235,14 @@ def find_trigger(resources: list[dict], collection: str, item: dict, outputs: di
             connection.get("connectionName") != outputs["connectorNamespaceConnectionName"] or
             connection.get("connectorName") != "sharepointonline" or properties.get("deliveryMode") not in modes):
         raise ValueError(f"Refusing to change '{name}': subscription ownership does not match.")
+    if mode == "polling":
+        metadata = properties.get("metadata", {})
+        if (metadata.get("destinationType") != "functionApp" or
+                str(metadata.get("functionAppName", "")).lower() != outputs["functionAppName"].lower() or
+                str(metadata.get("functionAppResourceGroup", "")).lower() != outputs["resourceGroupName"].lower() or
+                str(metadata.get("functionAppSubscriptionId", "")).lower() != outputs["AZURE_SUBSCRIPTION_ID"].lower() or
+                metadata.get("functionName") != item["functionName"]):
+            raise ValueError(f"Refusing to change '{name}': Function App destination does not match.")
     return resource
 
 
@@ -312,7 +327,8 @@ def configure_triggers(outputs: dict, mode: str, collection: str, resources: lis
 
 def authorize(outputs: dict, *, link_only: bool) -> bool:
     """Return whether consent allows setup; link-only always defers writes."""
-    arguments = ("-g", outputs["resourceGroupName"], "--namespace", outputs["connectorNamespaceName"])
+    arguments = ("--subscription", outputs["AZURE_SUBSCRIPTION_ID"], "-g",
+                 outputs["resourceGroupName"], "--namespace", outputs["connectorNamespaceName"])
 
     def status() -> str:
         response = cli("az", "connector-namespace", "connection", "show", *arguments,
@@ -366,6 +382,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--force-local-settings", action="store_true")
     parser.add_argument("--local-settings-only", action="store_true")
+    parser.add_argument("--prepare-app", action="store_true")
     parser.add_argument("--consent-link-only", action="store_true",
                         help="Show consent status or a link without opening a browser, waiting, or writing settings or triggers.")
     parser.add_argument("--callback-base-url")
@@ -376,11 +393,22 @@ def main(argv: list[str] | None = None) -> None:
     outputs = cli("azd", "env", "get-values", "--output", "json")
     if not isinstance(outputs, dict):
         raise ValueError("Invalid azd environment outputs.")
-    required(outputs, "resourceGroupName", "connectorNamespaceName", "connectorNamespaceConnectionName")
+    required(outputs, "AZURE_SUBSCRIPTION_ID", "resourceGroupName", "connectorNamespaceName",
+             "connectorNamespaceConnectionName")
+    if options.prepare_app:
+        if options.mode != "polling" or options.local_settings_only or options.consent_link_only:
+            parser.error("--prepare-app is a separate polling-only phase.")
+        collection = namespace_url(outputs)
+        configure_triggers(outputs, options.mode, collection, list_triggers(collection))
+        return
+    if options.consent_link_only:
+        if options.local_settings_only:
+            parser.error("--local-settings-only cannot be combined with --consent-link-only.")
+        cli("az", "extension", "show", "--name", "connector-namespace", "-o", "json")
+        authorize(outputs, link_only=True)
+        return
     values = local_values(outputs, options.mode)
     if options.local_settings_only:
-        if options.consent_link_only:
-            parser.error("--local-settings-only cannot be combined with --consent-link-only.")
         write_local_settings(options.project.resolve() / "local.settings.json", values, force=options.force_local_settings)
         return
     cli("az", "extension", "show", "--name", "connector-namespace", "-o", "json")

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": { "value": "${resourceGroupName}" },
+    "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
+    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
+    "mailFolderPath": { "value": "${OFFICE365_MAIL_FOLDER=selected-by-preprovision-hook}" },
+    "calendarId": { "value": "${OFFICE365_CALENDAR_ID=selected-by-preprovision-hook}" },
+    "sharedMailboxAddress": { "value": "${OFFICE365_SHARED_MAILBOX_ADDRESS=}" },
+    "sharedMailboxFolderId": { "value": "${OFFICE365_SHARED_MAILBOX_FOLDER_ID=Inbox}" }
+  }
+}
