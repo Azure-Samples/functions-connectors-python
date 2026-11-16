@@ -109,7 +109,7 @@ def protect_path(path: Path) -> None:
         os.chmod(path, 0o700 if path.is_dir() else 0o600)
         return
     import ctypes
-    from ctypes import wintypes
+    wintypes = ctypes.wintypes
 
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     security = ctypes.WinDLL("advapi32", use_last_error=True)
