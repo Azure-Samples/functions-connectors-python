@@ -19,9 +19,11 @@ No public callback, connector extension key, or local tunnel is needed.
 - The [connector-namespace CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - A OneDrive for Business account and permission to authorize the connection.
 - A supported Python version; deployment uses Python 3.14.
-- `azure-functions>=2.4.0b1` on Python 3.13+, or `azure-functions>=1.27.0b1` on
-  older supported versions. The requirements file selects the version family.
-- `azurefunctions-extensions-connectors>=1.0.0b4` for typed metadata bindings.
+- `azure-functions>=2.4.0` on Python 3.13+. On older supported versions, manually
+  install `azure-functions>=1.27.0b1` before sample requirements; see the
+  [older Python setup](../../README.md#python-312-and-older-supported-versions).
+- `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`
+  for typed metadata bindings.
 - PowerShell 7.3+ for the default hook, or Bash with jq 1.6+ and GNU coreutils.
 
 Python 3.12 and older also require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.

@@ -8,11 +8,17 @@ local callback.
 
 ## Prerequisites and deployment
 
-Use Python 3.14, Azure Developer CLI, Azure CLI 2.75.0+, the `connector-namespace`
+Deployment uses Python 3.14. Use Azure Developer CLI, Azure CLI 2.75.0+, the `connector-namespace`
 CLI extension, and an Office 365 test mailbox/calendar. Hooks run under PowerShell
 or a POSIX shell and share `../scripts/setup.py`; keep that folder in the checkout.
 Set `PYTHON` to an interpreter path if needed. No `jq` or .NET SDK is required.
 See [Python dependencies and language differences](../README.md).
+
+Requirements use `azure-functions>=2.4.0` on Python 3.13+ and stable connector
+packages `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
+For Python 3.12 and older supported versions, follow the
+[manual SDK setup](../../README.md#python-312-and-older-supported-versions)
+before installing sample requirements.
 
 ```bash
 cd office365App/webhook

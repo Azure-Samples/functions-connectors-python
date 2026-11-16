@@ -15,11 +15,13 @@ their bodies match the [polling app](../polling).
 - **PowerShell 7.3+**, including when using the Bash wrapper.
 - A Dataverse organization and an OAuth account permitted to register
   organization-scoped event subscriptions.
-- A supported Python version; deployment uses Python 3.14. Requirements select
-  `azure-functions>=2.4.0b1` for Python 3.13+ and `azure-functions>=1.27.0b1` for
-  older supported versions. Python 3.12 and older need
+- A supported Python version; deployment uses Python 3.14. Requirements install
+  `azure-functions>=2.4.0` on Python 3.13+. On older supported versions, manually
+  install `azure-functions>=1.27.0b1` before sample requirements; see the
+  [older Python setup](../../README.md#python-312-and-older-supported-versions).
+  Python 3.12 and older need
   `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in deployed and local settings.
-- `azurefunctions-extensions-connectors>=1.0.0b4`.
+- `azurefunctions-extensions-connectors>=1.0.0`.
 
 ## Deploy
 

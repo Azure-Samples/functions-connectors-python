@@ -53,10 +53,13 @@ monitoring roles after identity creation. Poll delivery also grants the app acce
 to the connection. Namespace and developer access policies stay separate.
 No always-ready instances are configured.
 
-Both apps require `azurefunctions-extensions-connectors>=1.0.0b4`, plus
-`azure-functions>=2.4.0b1` on Python 3.13+, or `azure-functions>=1.27.0b1` on older
-supported Python versions. Requirements markers select the SDK family. The
-templates and local examples include `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
+Both apps require `azure-connectors>=1.0.0` and
+`azurefunctions-extensions-connectors>=1.0.0`, plus `azure-functions>=2.4.0` on
+Python 3.13+. On Python 3.12 and older supported versions, manually install
+`azure-functions>=1.27.0b1` before sample requirements; see the
+[older Python setup](../README.md#python-312-and-older-supported-versions).
+These versions require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, which the templates
+and local examples include.
 
 Both shell hooks use the same standard-library Python helper. Set `PYTHON` to an
 explicit interpreter when needed. Local settings use Azurite and developer

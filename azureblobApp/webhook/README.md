@@ -19,9 +19,10 @@ not replace system-key callback authentication.
   and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75.0+.
 - The [connector-namespace CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - A supported Python version; deployment uses Python 3.14.
-- `azure-functions>=2.4.0b1` for Python 3.13+, or `azure-functions>=1.27.0b1`
-  for older supported versions. The requirements file selects the SDK family.
-- `azurefunctions-extensions-connectors>=1.0.0b4`.
+- `azure-functions>=2.4.0` for Python 3.13+. On older supported versions, manually
+  install `azure-functions>=1.27.0b1` before sample requirements; see the
+  [older Python setup](../../README.md#python-312-and-older-supported-versions).
+- `azurefunctions-extensions-connectors>=1.0.0`.
 - PowerShell 7.3+ for the default hook, or Bash with jq 1.6+ and GNU coreutils.
 - Permission to create resources and role assignments in the subscription.
 

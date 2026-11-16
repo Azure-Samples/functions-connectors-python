@@ -29,6 +29,12 @@ and request bodies and are removed after success or failure.
 
 ## Run locally
 
+Requirements use `azure-functions>=2.4.0` on Python 3.13+ and stable connector
+packages `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
+For Python 3.12 and older supported versions, follow the
+[manual SDK setup](../../README.md#python-312-and-older-supported-versions)
+before installing sample requirements.
+
 Create and activate a Python virtual environment, install requirements with
 `python -m pip install -r requirements.txt`, start Azurite, and run `func start`.
 The hook generates ignored local settings if absent and preserves existing files.

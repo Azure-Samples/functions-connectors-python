@@ -42,12 +42,16 @@ arguments, type annotations, and handler code match the webhook sample. Both set
 
 | Python | Minimum `azure-functions` | Required setting |
 | --- | --- | --- |
-| 3.13 and newer | `2.4.0b1` | None |
+| 3.13 and newer | `2.4.0` | None |
 | 3.12 and older (supported Functions versions) | `1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+
+For Python 3.12 and older, manually install the SDK before sample requirements;
+see the [older Python setup](../README.md#python-312-and-older-supported-versions).
 
 The deployment templates use Python 3.14. Both templates and local settings
 examples include the isolation setting, so it remains set if you change to Python
-3.12. Both apps require `azurefunctions-extensions-connectors>=1.0.0b4` for typed
+3.12. Both apps require `azure-connectors>=1.0.0` and
+`azurefunctions-extensions-connectors>=1.0.0` for typed
 payloads. One received connector event can contain several emails or calendar
 items; the typed list describes that payload, not a request for host-level batching.
 

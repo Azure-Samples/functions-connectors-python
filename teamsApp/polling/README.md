@@ -15,9 +15,11 @@ has matching handler code; only the polling decorator arguments differ.
   [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - **PowerShell 7.3+ on every platform**, including for the Bash wrapper.
 - A Teams account with team/channel access and permission to authorize the connection.
-- A supported Python runtime; deployment uses Python 3.14. Requirements select
-  `azure-functions>=2.4.0b1` on Python 3.13+, or `azure-functions>=1.27.0b1` on older
-  supported versions, plus `azurefunctions-extensions-connectors>=1.0.0b4`.
+- A supported Python runtime; deployment uses Python 3.14. Requirements install
+  `azure-functions>=2.4.0` on Python 3.13+. On older supported versions, manually
+  install `azure-functions>=1.27.0b1` before sample requirements; see the
+  [older Python setup](../../README.md#python-312-and-older-supported-versions).
+- `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
 - Python 3.12 and older require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in
   the deployed and local settings.
 

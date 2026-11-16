@@ -31,9 +31,11 @@ settings examples. Run `azd up` from the chosen folder with a separate environme
 name for each mode. Poll delivery does not require a public callback; webhook
 delivery uses the connector extension system key.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions
-require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
-Requirements use version markers. Templates use Python 3.14 and include isolation.
-Both apps retain `azurefunctions-extensions-connectors>=1.0.0b4`.
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported
+versions, manually install `azure-functions>=1.27.0b1` before sample requirements
+and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; see the
+[older Python setup](../README.md#python-312-and-older-supported-versions).
+Templates use Python 3.14 and include isolation.
+Both apps retain `azurefunctions-extensions-connectors>=1.0.0`.
 
 See the [Dataverse connector reference](https://learn.microsoft.com/connectors/commondataservice/).

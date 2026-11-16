@@ -30,6 +30,12 @@ Bicep owns them. It disables unselected existing sources by changing only state.
 
 ## Run locally
 
+Requirements use `azure-functions>=2.4.0` on Python 3.13+ and stable connector
+packages `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
+For Python 3.12 and older supported versions, follow the
+[manual SDK setup](../../README.md#python-312-and-older-supported-versions)
+before installing sample requirements.
+
 Create and activate a Python virtual environment, install the requirements with
 `python -m pip install -r requirements.txt`, and sign in with `az login`.
 Start Azurite and install Functions Core Tools. Run the hook after provisioning

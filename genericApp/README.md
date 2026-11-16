@@ -24,9 +24,11 @@ Namespace connections and trigger configurations. There are no `azd up` or postd
 hooks. Function names route webhook callbacks; names alone do not subscribe to a
 connector operation. Configure the operation and its parameters in the namespace.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions
-require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
-Each requirements file uses Python-version markers. Both apps use the Preview
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported
+versions, manually install `azure-functions>=1.27.0b1` before sample requirements
+and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; see the
+[older Python setup](../README.md#python-312-and-older-supported-versions).
+Neither app needs a connector SDK or rich binding extension. Both use the Preview
 Functions extension bundle and include safe local settings examples.
 
 Follow the [connector configuration guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md)

@@ -28,11 +28,13 @@ the connector callback authenticated with the connector extension system key.
 
 | Python | Minimum Functions SDK | Required setting |
 | --- | --- | --- |
-| 3.13+ | `azure-functions>=2.4.0b1` | None |
+| 3.13+ | `azure-functions>=2.4.0` | None |
 | 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-Both requirement files use Python-version markers and require
-`azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14 and
+For Python 3.12 and older, manually install the SDK before sample requirements;
+see the [older Python setup](../README.md#python-312-and-older-supported-versions).
+Both apps require `azure-connectors>=1.0.0` and
+`azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14 and
 includes isolation settings, as do the local examples.
 
 Use a **connector folder ID**, not a display name, path, or a guessed encoding.

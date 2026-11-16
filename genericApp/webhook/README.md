@@ -15,8 +15,10 @@ Connector Namespace trigger config.
 - Functions Core Tools v4, a supported Python runtime, Azure CLI, and Azurite for local storage.
 - An existing Connector Namespace identity, authorized connection, and enabled
   Webhook trigger configs. Follow the [webhook configuration guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#webhook-delivery).
-- Requirements select `azure-functions>=2.4.0b1` on Python 3.13+, or
-  `azure-functions>=1.27.0b1` for older supported versions. On Python 3.12 and older,
+- Requirements install `azure-functions>=2.4.0` on Python 3.13+. On older supported
+  versions, manually install `azure-functions>=1.27.0b1` before sample requirements;
+  see the [older Python setup](../../README.md#python-312-and-older-supported-versions).
+  On Python 3.12 and older,
   set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in Azure. The local example
   includes it. No connector SDK or rich binding extension package is required.
 

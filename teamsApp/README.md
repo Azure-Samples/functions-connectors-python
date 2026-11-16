@@ -33,9 +33,11 @@ Handler code matches across delivery modes; polling adds only `delivery_mode` an
 independent infrastructure, dependencies, hooks, and safe local settings examples.
 Run `azd up` from the chosen folder with a separate environment name for each mode.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions
-require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
-Requirements use version markers and include `azurefunctions-extensions-connectors>=1.0.0b4`.
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported
+versions, manually install `azure-functions>=1.27.0b1` before sample requirements
+and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; see the
+[older Python setup](../README.md#python-312-and-older-supported-versions).
+Both apps require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
 Deployment uses Python 3.14. PowerShell 7.3+ is required for setup on all platforms,
 including the alternative Bash entry points.
 

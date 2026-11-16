@@ -18,8 +18,12 @@ names if you deploy both, so they do not overwrite resources.
 
 | Python | Minimum Functions SDK | Required app setting |
 | --- | --- | --- |
-| 3.13+ | `azure-functions>=2.4.0b1` | None |
+| 3.13+ | `azure-functions>=2.4.0` | None |
 | 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+
+For Python 3.12 and older, manually install the SDK before sample requirements;
+see the [older Python setup](../README.md#python-312-and-older-supported-versions).
+Both apps use `azurefunctions-extensions-connectors>=1.0.0`.
 
 > [!CAUTION]
 > The handlers log blob names, paths, sizes, and modification times. Use test data,

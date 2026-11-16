@@ -55,13 +55,24 @@ The included deployment templates use Python 3.14 on Flex Consumption.
 
 ## The packages these samples use
 
-| Package | Role |
-|---|---|
-| [`azure-functions`](https://pypi.org/project/azure-functions/) | The Functions Python SDK. Provides `@app.connector_trigger` and the broader bindings surface. |
-| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | Supported connector trigger rich SDK-type bindings backed by `azure-connectors` models. |
+| Package | Stable minimum | Role |
+|---|---|---|
+| [`azure-functions`](https://pypi.org/project/azure-functions/) | `>=2.4.0` (Python 3.13+) | The Functions Python SDK. Provides `@app.connector_trigger` and the broader bindings surface. |
+| [`azure-connectors`](https://pypi.org/project/azure-connectors/) | `>=1.0.0` | Connector clients and models used by typed samples. |
+| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | `>=1.0.0` | Supported connector trigger rich SDK-type bindings backed by `azure-connectors` models. |
 
 
-Install the requirements from the selected app's folder. Each app specifies the package versions and Python version markers it needs; raw-payload samples may not need the rich-binding extension.
+Install the requirements from the selected app's folder. Requirements install `azure-functions>=2.4.0` only on Python 3.13+; generic raw-payload samples need neither connector package.
+
+### Python 3.12 and older supported versions
+
+Python 3.13+ is not required for local use. On Python 3.12 and older supported
+Functions runtimes, manually install `azure-functions>=1.27.0b1` **before** installing
+the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and
+in the deployed app. Requirements do not install this older SDK automatically.
+The beta SDK is a documentation-only exception because no stable 1.27.0 release
+exists; the connector packages use the stable minimums above. Included deployment
+templates remain on Python 3.14.
 
 
 ## Related repos

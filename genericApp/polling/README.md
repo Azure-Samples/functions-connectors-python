@@ -11,8 +11,10 @@ tunnel is required; the function deliberately does not parse or log payload data
 - An existing authorized Connector Namespace connection and enabled Poll trigger
   config. Grant both the namespace identity and receiving developer/app identity
   connection access. See the [Poll setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#poll-delivery).
-- Requirements select `azure-functions>=2.4.0b1` on Python 3.13+, or
-  `azure-functions>=1.27.0b1` on older supported versions. Python 3.12 and older
+- Requirements install `azure-functions>=2.4.0` on Python 3.13+. On older supported
+  versions, manually install `azure-functions>=1.27.0b1` before sample requirements;
+  see the [older Python setup](../../README.md#python-312-and-older-supported-versions).
+  Python 3.12 and older
   require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in the local example;
   set it in the deployed app too. No connector SDK package is needed.
 

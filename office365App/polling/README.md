@@ -15,6 +15,12 @@ connector system key or tunnel is needed.
 - PowerShell or a POSIX shell. Keep `../scripts/setup.py` with the checkout.
 - Office 365 test mailbox/calendar; Functions Core Tools v4 and Azurite for local work.
 
+Requirements use `azure-functions>=2.4.0` on Python 3.13+ and stable connector
+packages `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`.
+For Python 3.12 and older supported versions, follow the
+[manual SDK setup](../../README.md#python-312-and-older-supported-versions)
+before installing sample requirements.
+
 ## Deploy and choose sources
 
 ```bash
