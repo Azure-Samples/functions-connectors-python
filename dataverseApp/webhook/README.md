@@ -1,32 +1,30 @@
-# Microsoft Dataverse webhook events (Python)
+# Microsoft Dataverse webhook triggers (Python)
 
-This app covers `OnDataverseRowChanged` (`SubscribeWebhookTrigger`), opt-in
-`OnDataverseActionPerformed` (`BusinessEventsTrigger`), and separate row functions
-`OnDataverseRowAdded` (`GetOnNewItems_V2`), `OnDataverseRowModified`
-(`GetOnUpdatedItems_V2`), and `OnDataverseRowDeleted` (`GetOnDeletedItems_V2`).
-All use raw `str` payloads: the Python extension has no matching Dataverse models.
-The port does not invent SDK types. They log only trigger names;
-their bodies match the [polling app](../polling).
+Connector Namespace sends Dataverse events to the Functions connector callback, authenticated with the `connector_extension` system key. All handlers use raw `str` bindings and log only the trigger name.
+
+| Function | Connector operation |
+| --- | --- |
+| `OnDataverseRowChanged` | [`SubscribeWebhookTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-a-row-is-added,-modified-or-deleted) |
+| `OnDataverseActionPerformed` | [`BusinessEventsTrigger`](https://learn.microsoft.com/connectors/commondataservice/#when-an-action-is-performed) |
+| `OnDataverseRowAdded` | `SubscribeOnNewItems` |
+| `OnDataverseRowModified` | `SubscribeOnUpdatedItems` |
+| `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` |
+
+This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
 ## Prerequisites
 
-- Azure Developer CLI, Azure CLI 2.75.0+, and the
-  [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- **PowerShell 7.3+**, including when using the Bash wrapper.
-- A Dataverse organization and an OAuth account permitted to register
-  organization-scoped event subscriptions.
-- A supported Python version; deployment uses Python 3.14. Requirements select
-  `azure-functions>=2.4.0b1` for Python 3.13+ and `azure-functions>=1.27.0b1` for
-  older supported versions. Python 3.12 and older need
-  `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in deployed and local settings.
-- `azurefunctions-extensions-connectors>=1.0.0b4`.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- PowerShell 7.3+ on every platform, including when using the Bash wrapper.
+- A Dataverse organization and an account permitted to authorize the connection and register organization-scoped event subscriptions.
+- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
 
-## Deploy
+For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
 
-From the repository root:
+## Deploy to Azure
 
 ```powershell
-cd dataverseApp/webhook
 az login
 azd auth login
 azd env new dataverse-webhook
@@ -34,95 +32,45 @@ azd env set DATAVERSE_ENVIRONMENT_URL https://contoso.crm.dynamics.com
 azd up
 ```
 
-Use a different environment name from polling. Supply the organization's HTTPS URL,
-not a friendly name. `DATAVERSE_TABLE_NAME` defaults to the logical name `account`,
-**not** the plural entity set `accounts`. Row events use `organization`, `entityname`,
-`message=7` (added, modified, or deleted), and organization scope `scope=4`.
+Authorize with an account that can register Dataverse events. After consent, choose the separate-row table and scope, and the action catalog, category, table, and action from the connector's returned options. The hook saves those choices in the selected azd environment and registers all five webhook configs using the deployed app's hostname and connector extension system key. The combined row trigger uses logical table `account` by default, `message=7`, and organization scope `4`.
 
-Deployment creates a Python 3.14 Linux Flex Consumption app, host storage,
-monitoring, system-assigned identities, a Connector Namespace, and an OAuth connection. Set
-`TELEMETRY_LOCATION` if monitoring needs a different region.
-`CONNECTOR_NAMESPACE_LOCATION` defaults to `westcentralus`.
+The action trigger needs an available cataloged business event. If the connector returns no choices, configure an event and check the account's permissions before rerunning `azd hooks run postdeploy`.
 
-The app's system identity uses host Blob Data Owner, Queue Data Contributor, and
-Table Data Contributor roles, `SystemAssignedIdentity` deployment storage, and
-Monitoring Metrics Publisher with `Authorization=AAD`. Function access and roles
-are assigned after app creation to avoid storage/app cycles. There is no deployed
-`FUNCTIONS_WORKER_RUNTIME` on Flex; Bicep selects Python 3.14.
+## Optional configuration
 
-The hook authorizes the connection and registers selected current-event Webhook
-configs through ARM (`Push` delivery). It discovers the actual Function App hostname
-and uses its **connector extension system key**, not an ordinary function key.
-Registration errors fail the hook, and temporary callback files are cleaned up.
-Existing resources must match the sample's name, identity, connection, connector,
-operation, and delivery mode before the hook changes them.
+| Setting | Purpose |
+| --- | --- |
+| `DATAVERSE_TABLE_NAME` | Logical table name for the combined trigger; defaults to `account`, not an entity-set name. |
+| `DATAVERSE_ENTITY_SET_NAME` | Separate-row Table Name selector returned by `GetTables`. |
+| `DATAVERSE_ROW_SCOPE` | Separate-row scope returned by `GetScopeFilters`; do not reuse combined-trigger `scope=4`. |
+| `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, `DATAVERSE_EVENT_ACTION` | Exact action selector values returned by the connector. |
+| `CONNECTOR_NAMESPACE_LOCATION`, `TELEMETRY_LOCATION` | Override the namespace or monitoring region. |
 
-### Optional action-performed event
-
-Before `azd up`, set `DATAVERSE_ENABLE_ACTION_TRIGGER=true` and all four actual
-selector identifiers: `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`,
-`DATAVERSE_EVENT_TABLE`, and `DATAVERSE_EVENT_ACTION`. The last maps to
-`sdkmessagename`; these are event-selector values, not display labels or placeholders.
-Preprovision validation rejects incomplete configuration.
-
-Action-performed is disabled by default. To turn it off, set the flag to `false`
-and rerun `azd up`. This disables the function and removes only a matching
-sample-owned action subscription; unrelated registrations are preserved.
-
-### Optional separate row operations
-
-Set `DATAVERSE_ENABLE_SEPARATE_ROW_TRIGGERS=true` and
-`DATAVERSE_ENTITY_SET_NAME=accounts` before `azd up` to subscribe all three separate
-row functions. They use `dataset` and plural entity-set `table`, not the combined
-operation's logical `entityname`. Events overlap combined row delivery. All four
-optional functions are disabled in public local examples. Turning the flag off
-removes only matching owned separate-row namespace configs.
+Set the selector values before `azd up` to use them without prompts. The combined logical table and separate-row table are selected independently; choose matching tables if all row triggers should monitor the same table. The hook validates existing operations, selectors, connections, destinations, callbacks, and delivery modes before changes. Matching enabled configs are preserved; disabled, legacy, or mismatched row configs require explicit cleanup or a fresh environment.
 
 ### Action subscription cleanup
 
-Before action creation or namespace deletion, the helper writes a private ignored
-`.azure/dataverse-action-cleanup-*.json` journal bound to the namespace, connection,
-app, organization, delivery mode, operation, function, and selectors. An enabled
-owned action with the same selectors is preserved, not re-registered. Selector
-drift, disabled existing actions, foreign ownership, and ambiguous configs fail closed.
-Provider callback query redaction is accepted only with exact destination metadata.
-Legacy configs without that metadata require manual ownership checks.
+The hook maintains an ignored `.azure/dataverse-action-cleanup-*.json` journal bound to the exact action registration. Before replacing an action or deleting resources, inspect Dataverse for the exact owned `callbackregistration`, verify its selectors and destination, remove only that registration, and confirm GET returns 404. Only then archive the matching journal outside this app. Preserve unrelated registrations; the scripts do not automatically delete Dataverse callbacks.
 
-Disabling the action removes only its Connector Namespace config, then **fails**
-while source cleanup remains unverified. Reruns keep failing and the journal blocks
-replacement creation. Inspect Dataverse for the exact owned `callbackregistration`,
-verify its selectors and destination, remove only it, and confirm GET returns 404.
-Only then archive the matching journal outside this app and rerun. Do not bulk-delete
-by catalog, category, message, or table; preserve other subscriptions. No script
-automatically deletes Dataverse callbacks. The helper accepts explicit trigger and
-function names for another action config; use a separate journal path per config.
+## Local development
 
-The hook generates safe local settings atomically only when missing, preserving
-existing files and Connected OAuth consent. Rerun with `azd hooks run postdeploy`.
-After changing event selection, explicitly regenerate local settings with
-`pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings`. The Bash wrapper accepts
-the same switch and still requires PowerShell 7.
+- Start Azurite separately.
+- Use the generated local settings or copy `local.settings.example.json` to `local.settings.json` if absent:
 
-## Run locally
+```powershell
+python -m venv .venv
+# Activate .venv for your shell.
+python -m pip install -r requirements.txt
+func start --enableAuth
+```
 
-Install requirements in a virtual environment and install Functions Core Tools v4
-and Azurite. Use the generated local settings or copy `local.settings.example.json`
-to `local.settings.json`. Start Azurite separately, then run `func start --enableAuth`.
-
-Real local webhook delivery requires a secure public HTTPS tunnel and callback
-configs targeting the local functions, authenticated with the local connector
-extension system key. Core Tools bypasses local key checks unless `--enableAuth`
-is set; enable it before exposing a tunnel. The deployment hook targets Azure, not localhost. Use separate
-configs, or rerun the hook to restore deployed callbacks after manual changes.
-The polling sample does not need a public tunnel.
+- To receive local events, expose the host through a secure public HTTPS tunnel and configure separate callbacks using the local function names and local `connector_extension` system key.
+- Core Tools bypasses key checks by default; enable authentication before exposing the host.
+- The hook targets Azure, not localhost; rerun it to restore deployed callbacks after manual changes.
+- After changing selections, use `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace local settings explicitly.
 
 ## Verify and clean up
 
-In [Connector Namespaces](https://connectors.azure.com/), verify Connected consent,
-Enabled selected configs, and successful source registration. An Enabled resource
-alone does not prove event registration succeeded. Create, modify, and delete a
-test row, then check logs for `Received OnDataverseRowChanged trigger`. Optional
-action delivery requires executing the selected action and has not been live-verified.
+Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the corresponding row-trigger logs. Action delivery requires executing the selected action on an authorized test fixture.
 
-Never commit callback keys, tokens, or private local settings. Run
-`azd down --purge` from this folder only after completing action source cleanup.
+Complete the action source-cleanup steps above before running `azd down --purge` from this folder. Never commit callback keys, credentials, or local settings.

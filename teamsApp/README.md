@@ -1,42 +1,25 @@
 # Microsoft Teams connector events (Python)
 
-Choose a standalone [polling app](./polling/README.md) or
-[webhook app](./webhook/README.md). Both cover the eleven events in the
-[.NET reference](https://github.com/Azure-Samples/functions-connectors-net/pull/11).
-Infrastructure and hook behavior follow reference commit
-`ca1f8cacfaa5f22e51ce2693c059a515f60acef5`, including its Poll deselection safeguards.
-Python keeps its own SDK bindings, dependency markers, and native platform telemetry;
-the .NET package and worker telemetry changes do not apply.
+Choose a standalone [polling app](./polling/README.md) or [webhook app](./webhook/README.md). Both cover the eleven events below.
 
 | Function / connector operation | Payload | Default |
 | --- | --- | --- |
-| `OnNewChannelMessage` | `list[teams.ChatMessage]` | Enabled |
-| `OnNewChannelMessageMentioningMe` | `list[teams.ChatMessage]` | Enabled |
-| `OnGroupMembershipAdd` | `list[teams.OnGroupMemberChangeResponse]` | Enabled |
-| `OnGroupMembershipRemoval` | `list[teams.OnGroupMemberChangeResponse]` | Enabled |
-| `WebhookChatMessageTrigger` | `str` | Opt-in |
-| `WebhookNewMessageTrigger` | `str` | Opt-in |
-| `WebhookAtMentionTrigger` | `str` | Opt-in |
-| `WebhookKeywordTrigger` | `str` | Opt-in |
-| `WebhookMessageReactionTrigger` | `str` | Opt-in |
-| `RecordingTrigger` | `str` | Opt-in |
-| `TranscriptTrigger` | `str` | Opt-in |
+| [`OnNewChannelMessage`](https://learn.microsoft.com/connectors/teams/#when-a-new-channel-message-is-added) | `List[teams.ChatMessage]` | Enabled |
+| [`OnNewChannelMessageMentioningMe`](https://learn.microsoft.com/connectors/teams/#when-i-am-mentioned-in-a-channel-message) | `List[teams.ChatMessage]` | Enabled |
+| [`OnGroupMembershipAdd`](https://learn.microsoft.com/connectors/teams/#when-a-new-team-member-is-added) | `List[teams.OnGroupMemberChangeResponse]` | Enabled |
+| [`OnGroupMembershipRemoval`](https://learn.microsoft.com/connectors/teams/#when-a-new-team-member-is-removed) | `List[teams.OnGroupMemberChangeResponse]` | Enabled |
+| [`WebhookChatMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-chat-message-is-added) | `str` | Opt-in |
+| [`WebhookNewMessageTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-new-message-is-added-to-a-chat-or-channel) | `str` | Opt-in |
+| [`WebhookAtMentionTrigger`](https://learn.microsoft.com/connectors/teams/#when-i'm-@mentioned) | `str` | Opt-in |
+| [`WebhookKeywordTrigger`](https://learn.microsoft.com/connectors/teams/#when-keywords-are-mentioned) | `str` | Opt-in |
+| [`WebhookMessageReactionTrigger`](https://learn.microsoft.com/connectors/teams/#when-someone-reacted-to-a-message-in-chat) | `str` | Opt-in |
+| [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available) | `str` | Opt-in |
+| [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `str` | Opt-in |
 
-The four typed handlers log trigger names and actual item counts. Membership items
-are SDK dictionary aliases. The seven raw-string handlers have no supported
-callback models and log only event names: no payload parsing, guessed counts, or
-message, member, recording, or transcript contents. A `Webhook` prefix in an
-operation name describes the source subscription, not Functions delivery mode.
+Handlers log trigger names and item counts, not message, member, recording, or transcript contents.
 
-Handler code matches across delivery modes; polling adds only `delivery_mode` and
-`trigger_config_name`. Both use `connection="ConnectorNamespace"`. Each folder has
-independent infrastructure, dependencies, hooks, and safe local settings examples.
-Run `azd up` from the chosen folder with a separate environment name for each mode.
+Each folder has independent infrastructure, dependencies, hooks, and local settings examples. Run `azd up` from the chosen folder with a separate environment name for each mode.
 
-Python 3.13+ requires `azure-functions>=2.4.0b1`; older supported Python versions
-require `azure-functions>=1.27.0b1` and `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`.
-Requirements use version markers and include `azurefunctions-extensions-connectors>=1.0.0b4`.
-Deployment uses Python 3.14. PowerShell 7.3+ is required for setup on all platforms,
-including the alternative Bash entry points.
+Python 3.13+ requires `azure-functions>=2.4.0`. On Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before the sample requirements and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; requirements install the SDK only on Python 3.13+. Requirements include `azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14. PowerShell 7.3+ is required for setup on all platforms.
 
 See the [Teams connector reference](https://learn.microsoft.com/connectors/teams/).

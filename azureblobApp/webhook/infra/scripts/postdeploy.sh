@@ -72,11 +72,11 @@ for ((attempt=1; attempt<=100; attempt++)); do
   case "$currentStatus" in
     connected|ready) break ;;
     error)
-      echo 'ERROR: The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
+      echo 'ERROR: The managed-identity Blob connection is in Error status. Verify the namespace identity has Storage Blob Data Reader on the container. Allow RBAC propagation, then rerun the hook.' >&2
       exit 1 ;;
   esac
   if (( attempt == 100 )); then
-    echo 'ERROR: Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.' >&2
+    echo 'ERROR: Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace identity has Storage Blob Data Reader on the container. Allow RBAC propagation, then rerun the hook.' >&2
     exit 1
   fi
   sleep 3

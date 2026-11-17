@@ -43,7 +43,8 @@ function Get-DataverseConfigurations {
 function Connect-Dataverse {
     param($Outputs)
     function Get-Status {
-        $status = az connector-namespace connection show -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
+        $status = az connector-namespace connection show --subscription $Outputs.AZURE_SUBSCRIPTION_ID `
+            -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
             -n $Outputs.connectorNamespaceConnectionName --query properties.overallStatus -o tsv 2>$null
         if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$status)) { throw 'Could not read the Dataverse connection status.' }
         return ([string]$status).Trim()
@@ -52,7 +53,8 @@ function Connect-Dataverse {
     $link = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
         foreach ($query in @('value[0].link', 'link')) {
-            $link = az connector-namespace connection list-consent-links -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
+            $link = az connector-namespace connection list-consent-links --subscription $Outputs.AZURE_SUBSCRIPTION_ID `
+                -g $Outputs.resourceGroupName --namespace $Outputs.connectorNamespaceName `
                 --connection-name $Outputs.connectorNamespaceConnectionName --parameters "[{parameterName:token,redirectUrl:'https://connectors.azure.com'}]" `
                 --query $query -o tsv 2>$null
             if ($LASTEXITCODE -ne 0) { throw 'Could not request a Dataverse consent link.' }

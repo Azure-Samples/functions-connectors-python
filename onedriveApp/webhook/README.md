@@ -1,93 +1,66 @@
 # OneDrive for Business webhook triggers (Python)
 
-This standalone app covers `OnOneDriveNewFile` (`OnNewFilesV2`),
-`OnOneDriveUpdatedFile` (`OnUpdatedFilesV2`), `OnOneDriveNewFileContent`
-(`OnNewFileV2`), and `OnOneDriveUpdatedFileContent` (`OnUpdatedFileV2`). Metadata
-handlers receive `list[onedrive.BlobMetadata]` and log file properties. Content
-handlers receive raw `str` payloads and log only trigger names, never file content.
-The Python extension has no corresponding content-payload models. The [polling app](../polling)
-has matching types and handler bodies; it adds only `delivery_mode` and
-`trigger_config_name` to each decorator. Both use `connection="ConnectorNamespace"`.
+Connector Namespace sends OneDrive events to the Functions connector callback, authenticated with the `connector_extension` system key. Metadata handlers receive typed lists; content handlers receive raw `str` payloads.
 
-The Connector Namespace sends events to the Function App's connector callback,
-authenticated with its connector extension system key. Webhook is the default
-delivery mode; the shared `connection` argument does not change callback authentication.
+| Function | Connector operation | Binding |
+| --- | --- | --- |
+| `OnOneDriveNewFileContent` | [`OnNewFileV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-created) | `str` |
+| `OnOneDriveUpdatedFileContent` | [`OnUpdatedFileV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-modified) | `str` |
+| `OnOneDriveNewFile` | [`OnNewFilesV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-created-(properties-only)) | `List[onedrive.BlobMetadata]` |
+| `OnOneDriveUpdatedFile` | [`OnUpdatedFilesV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-modified-(properties-only)) | `List[onedrive.BlobMetadata]` |
+
+This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-  and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75.0+.
-- The [connector-namespace CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - A OneDrive for Business account and permission to authorize the connection.
-- A supported Python version; deployment uses Python 3.14.
-- `azure-functions>=2.4.0b1` on Python 3.13+, or `azure-functions>=1.27.0b1` on
-  older supported versions. The requirements file selects the version family.
-- `azurefunctions-extensions-connectors>=1.0.0b4` for typed bindings.
-- PowerShell 7.3+ for the default hook, or Bash with jq 1.6+ and GNU coreutils.
+- PowerShell 7.3+ or Bash, jq 1.6+, and GNU coreutils for the hook.
+- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
 
-Python 3.12 and older require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, included in
-the infrastructure and local settings example.
+For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
 
-## Deploy
-
-From the repository root:
+## Deploy to Azure
 
 ```bash
-cd onedriveApp/webhook
 az login
 azd auth login
 azd env new onedrive-webhook
-azd env set ONEDRIVE_FOLDER_ID root
 azd up
 ```
 
-Use a different environment name from polling. An explicit connector folder ID
-or `root` skips folder browsing. To select a folder interactively on first setup,
-omit the `azd env set ONEDRIVE_FOLDER_ID` command. The hook opens OAuth consent,
-waits for Connected, browses folders through that connection, and saves the selected
-connector ID to the azd environment. It fails on invalid selection or failed
-listing, save, or registration calls. Names and display paths are not connector IDs.
+Complete OAuth consent and select a folder when prompted. To skip browsing, set `ONEDRIVE_FOLDER_ID` to its **connector-returned ID** before `azd up`. Do not use a folder name, path, or literal `root`: `root` can register but fails trigger evaluation with `Invalid fileId`. The interactive root selection resolves the real ID.
 
-Deployment creates a Python 3.14 Linux Flex Consumption app, system-assigned managed identity,
-storage, monitoring, a Connector Namespace, and an OAuth OneDrive connection. The
-hook creates or updates four enabled Webhook trigger configs using the deployed app's actual hostname
-and the connector extension system key—not an ordinary function key. Temporary
-callback files are cleaned up. It also creates credential-free local settings only
-when absent and preserves existing regular files byte-for-byte. Directories and
-links fail. To replace settings explicitly, run
-`pwsh -File infra/scripts/postdeploy.ps1 -ForceLocalSettings` or
-`bash infra/scripts/postdeploy.sh --force-local-settings`. Run one writer at a time.
-Settings use private staging and atomic publication. Storage and monitoring grants
-follow Function creation; cloud Flex settings omit `FUNCTIONS_WORKER_RUNTIME`.
-Webhook setup validates the existing trigger list and never deletes subscriptions.
+The hook registers four webhook configs with the deployed app's actual hostname and connector extension system key. It preserves existing local settings.
 
-Monitoring defaults to `eastus2`, separately from the app region. Set
-`TELEMETRY_LOCATION` before provisioning to choose another supported monitoring region.
+## Optional configuration
 
-Re-run setup with `azd hooks run postdeploy`. To monitor another folder, set
-`ONEDRIVE_FOLDER_ID` to its connector ID and re-run the hook. To browse again, clear
-the saved value first. Complete consent using the OneDrive account you want to monitor.
+| Setting or action | Purpose |
+| --- | --- |
+| `ONEDRIVE_FOLDER_ID` | Explicit connector-returned folder ID; omit to select interactively. |
+| `TELEMETRY_LOCATION` | Monitoring region; defaults to `eastus2`. |
+| `azd hooks run postdeploy` | Rerun setup; set a new folder ID first to change the monitored folder. |
+| `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings` | Replace existing local settings. |
 
-## Run locally
+## Local development
 
-Copy `local.settings.example.json` to `local.settings.json`, install requirements
-in a virtual environment, start Azurite, then run `func start`.
+- Start Azurite separately.
+- Use the generated local settings or copy `local.settings.example.json` to `local.settings.json` if absent:
 
-Receiving real webhook events locally also requires a secure public tunnel and
-separate trigger configurations targeting the local function names. Authenticate
-with the local connector extension system key. The post-deploy hook targets the
-deployed app, not localhost. Re-run it to restore deployed callback settings after
-any manual changes, or use the polling sample to avoid public tunnels.
+```bash
+python -m venv .venv
+# Activate .venv for your shell.
+python -m pip install -r requirements.txt
+func start --enableAuth
+```
+
+- To receive local events, expose the host through a secure public HTTPS tunnel and configure separate callbacks for the local functions using the local `connector_extension` system key.
+- Core Tools bypasses key checks by default; enable authentication before exposing the host.
+- The hook targets Azure, not localhost; rerun it to restore deployed callbacks after manual changes.
 
 ## Verify and clean up
 
-In [Connector Namespaces](https://connectors.azure.com/), check the connection is
-Connected and all four trigger configs Enabled. Create then modify a test file
-smaller than 50 MB in the selected folder, allow time for detection, and check logs
-for all four function names. Content operations receive file content but the
-handlers neither log nor write it. Metadata handlers log file properties.
+Check that the connection is Connected and all four configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions. Metadata handlers log file properties; use test data and restrict log access.
 
-> [!CAUTION]
-> The handlers log file names and paths. Use a test folder and restrict log access.
-> Never commit tokens, callback keys, or local settings. Run `azd down --purge` from
-> this folder when finished.
+Run `azd down --purge` from this folder when finished. Never commit callback keys, credentials, or local settings.

@@ -21,7 +21,7 @@ from urllib.parse import quote, urlsplit
 
 
 API_VERSION = "2026-05-01-preview"
-CATALOG = json.loads((Path(__file__).resolve().parents[1] / "polling/infra/triggers.json").read_text())
+CATALOG = json.loads((Path(__file__).resolve().parents[1] / "triggers.json").read_text(encoding="utf-8"))
 OPERATIONS = {item["functionName"]: item["operationName"] for item in CATALOG}
 
 
@@ -166,9 +166,10 @@ def local_values(outputs: dict, mode: str) -> dict[str, str]:
     for item in items:
         function = item["functionName"]
         disabled = f"AzureWebJobs.{function}.Disabled"
-        if settings.get(disabled) != str(not item["enabled"]).lower():
+        disabled_value = settings.get(disabled)
+        if not isinstance(disabled_value, str) or disabled_value.lower() != str(not item["enabled"]).lower():
             raise ValueError("Function disabled flag does not match source selection.")
-        values[disabled] = settings[disabled]
+        values[disabled] = disabled_value.lower()
         if mode == "polling":
             name = function + "TriggerConfigName"
             if settings.get(name) != trigger_name(function, outputs, mode):

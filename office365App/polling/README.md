@@ -1,105 +1,72 @@
 # Office 365 Outlook polling triggers (Python)
 
-This app handles the [seven supported events](../README.md). Six personal sources
-are enabled by default; shared-mailbox email is opt-in. The host receives and
-acknowledges events outbound from the Connector Namespace. No public callback,
-connector system key or tunnel is needed.
+The Functions host receives events from the Connector Namespace polling endpoint. Six personal-mailbox/calendar sources are enabled by default; shared-mailbox email is opt-in. No public callback is required.
+
+| Function | Connector operation | Binding |
+| --- | --- | --- |
+| `OnNewEmail` | [`OnNewEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` |
+| `OnFlaggedEmail` | [`OnFlaggedEmailV4`](https://learn.microsoft.com/connectors/office365/#when-an-email-is-flagged-(v4)-(preview)) | `List[office365.GraphClientReceiveMessage]` |
+| `OnNewMentionMeEmail` | [`OnNewMentionMeEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-mentioning-me-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` |
+| `OnNewCalendarEvent` | [`CalendarGetOnNewItemsV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-event-is-created-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
+| `OnUpcomingEvent` | [`OnUpcomingEventsV3`](https://learn.microsoft.com/connectors/office365/#when-an-upcoming-event-is-starting-soon-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
+| `OnCalendarUpdatedItems` | [`CalendarGetOnUpdatedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-modified-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
+| `OnSharedMailboxNewEmail` | [`SharedMailboxOnNewEmailV2`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-in-a-shared-mailbox-(v2)) | `List[office365.GraphClientReceiveMessage]` |
+
+[`CalendarGetOnChangedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-added,-updated-or-deleted-(v3)) is excluded because its preview subscription fails with missing `TABLE`.
+
+This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
 ## Prerequisites
 
-- Python 3.14 for the deployed app and a Python interpreter for deployment hooks.
-  The [dependency markers and language differences](../README.md) also describe
-  supported older Python versions. Set `PYTHON` to an interpreter path if needed.
-- Azure Developer CLI, Azure CLI 2.75.0+, and the `connector-namespace` CLI extension.
-  Sign in with permission to read and update trigger configurations through ARM.
-- PowerShell or a POSIX shell. Keep `../scripts/setup.py` with the checkout.
-- Office 365 test mailbox/calendar; Functions Core Tools v4 and Azurite for local work.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- An Office 365 mailbox/calendar and an account permitted to authorize the connection and manage trigger configurations.
+- A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell or a POSIX shell.
+- For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
 
-## Deploy and choose sources
+For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+
+## Deploy to Azure
 
 ```bash
-cd office365App/polling
 az login
 azd auth login
 azd env new office365-polling
-azd env set OFFICE365_MAIL_FOLDER Inbox
-azd env set OFFICE365_CALENDAR_ID '<actual connector calendar ID>'
 azd up
 ```
 
-Use a different azd environment name from webhook. Infrastructure creates Python
-3.14 on Linux FC1 with system-assigned identity, identity-based host/deployment
-storage, telemetry, the namespace/connection and Poll trigger configurations.
-Granting app RBAC after app creation avoids a settings/identity dependency cycle.
+Authorize with the mailbox account, then select a mail folder and calendar from the connector's choices. The hook preserves existing consent and saves the selections in the azd environment. It creates enabled Poll configs after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
 
-| Environment value | Default / purpose |
+## Optional configuration
+
+| Setting or action | Purpose |
 | --- | --- |
-| `OFFICE365_MAIL_FOLDER` | `Inbox`; applies to personal email sources, without an importance filter |
-| `OFFICE365_CALENDAR_ID` | `Calendar` placeholder; supply the actual connector calendar ID |
-| `OFFICE365_SHARED_MAILBOX_ADDRESS` | Empty; opt in with a mailbox to which the authorized account has full access |
-| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | `Inbox` |
-| `OFFICE365_ENABLE_TRIGGERS` | `true`; set `false` to provision disabled sources without waiting for consent |
-| `CONNECTOR_NAMESPACE_LOCATION` | `westcentralus` |
-| `APPLICATION_INSIGHTS_LOCATION` | Host region; override if telemetry is unavailable there |
+| `OFFICE365_MAIL_FOLDER` | Skip the folder picker with `Inbox` or a connector-returned folder ID. |
+| `OFFICE365_CALENDAR_ID` | Skip the calendar picker with a connector-returned calendar ID. |
+| `OFFICE365_SHARED_MAILBOX_ADDRESS` | Enable shared-mailbox email; the account needs full mailbox access. Empty by default. |
+| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Skip the shared-mailbox folder picker with a connector-returned folder ID. |
+| `CONNECTOR_NAMESPACE_LOCATION`, `APPLICATION_INSIGHTS_LOCATION` | Override the namespace or monitoring region. |
+| `azd hooks run postdeploy` | Rerun setup while preserving existing local settings. |
 
-The hook preserves existing OAuth consent. Otherwise authorize with the mailbox
-account using its consent link. `-ConsentLinkOnly` / `--consent-link-only` prints
-the link, or reports existing consent, without opening a browser, waiting, or
-writing local settings or triggers. Authorization waits at most five minutes.
-If the connection is not authorized and sources are Disabled, the hook prints
-the link and defers setup without waiting. After consent, rerun the hook without
-the link-only flag to finish setup.
-
-## Poll settings and lifecycle
-
-`ConnectorNamespace__pollingEndpoint` comes from the service's receive URI with
-its trigger path, query and optional `/api` suffix removed. Cloud settings use
-`ConnectorNamespace__credential=managedidentity` without a user-assigned client ID.
-All seven decorators use `%<FunctionName>TriggerConfigName%` with config names
-`office365-<lowercase-function-name>`. The shared listener is disabled while its
-mailbox address is empty; its name setting still exists.
-
-After changing source parameters, run `azd provision` and the postdeploy hook.
-If the shared address becomes empty, the hook disables an existing sample-owned
-shared Poll source. It reads the full resource, checks scope, operation, connection
-and delivery mode, removes read-only fields, and changes only `state`. It preserves
-parameters, recurrence, metadata, description and other writable properties.
-Absent or already-disabled shared configs are write no-ops. Personal Poll configs
-are not rewritten by the hook. Incremental Bicep provisioning does not delete old
-configs automatically; review resource ownership before any manual deletion.
+After changing source parameters, run `azd up`. Clearing the shared mailbox address disables an existing sample-owned shared Poll config without deleting it. To inspect consent without writing settings or triggers, run `python ./infra/scripts/setup.py --mode polling --project . --consent-link-only` after provisioning the base layer.
 
 ## Local development
 
+Start Azurite separately. After provisioning, run:
+
 ```bash
 python -m venv .venv
-# Activate the virtual environment for your shell.
+# Activate .venv for your shell.
 python -m pip install -r requirements.txt
 az login
 azd hooks run postdeploy
-# Start Azurite in another terminal.
 func start
 ```
 
-The hook creates ignored local settings using Azurite, Python, isolation `1`, the
-deployed polling endpoint and all config names. Existing bytes are preserved,
-including custom settings. To replace them deliberately, use
-`pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or
-`sh ./infra/scripts/postdeploy.sh --force-local-settings`. This replaces the whole
-file with explicit defaults; it does not merge private settings. Links/directories
-are rejected, installation is atomic and owned staging files are cleaned.
-
-Do not put cloud managed-identity credentials/client IDs in local settings. Local
-execution uses developer authentication; the deploying user has connection access.
-Stop the cloud app while testing its configs locally, or use separate resources:
-otherwise hosts compete for the same events. Match the shared listener's disabled
-setting to the selected mailbox when preserving an existing local file.
+The hook creates local settings with the endpoint, trigger names, and listener flags if absent. To replace an existing file, run `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `sh ./infra/scripts/postdeploy.sh --force-local-settings`. Use developer credentials locally and update listener flags when changing the selected sources. Stop the deployed app or use separate configs to avoid competing listeners.
 
 ## Verify and clean up
 
-Check **Connected**, enabled selected sources and **Poll** delivery in the Connector
-Namespaces portal. Send mail of any importance, flag a message, mention yourself,
-create/modify a calendar event, and create one starting soon. If opted in, send
-shared-mailbox mail. Check `Received <FunctionName> trigger (<Count> items)` logs.
-Source detection can be delayed; delivery is at least once. See the [excluded
-changed-items preview operation](../README.md) before adding another calendar source.
-No live delivery is implied by offline tests. Run `azd down --purge` when finished.
+Check Connected consent and enabled Poll configs in [Connector Namespaces](https://connectors.azure.com/). Generate the selected mail/calendar events and check `Received <FunctionName> trigger (<Count> items)` logs. Source detection can be delayed and delivery can repeat. The handlers log counts, not message content.
+
+Run `azd down --purge` from this folder when finished. Never commit credentials or local settings.

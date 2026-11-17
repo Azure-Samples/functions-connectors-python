@@ -1,17 +1,60 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 name: functions-connectors-python-teams-polling
+requiredVersions:
+  azd: ">= 1.33.0"
 services:
   function-app:
     host: function
     project: .
     language: python
+infra:
+  layers:
+    - name: base
+      path: infra
+      module: main
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn:
+        - base
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/authorize-connection.ps1
+            interactive: true
+          posix:
+            shell: sh
+            run: bash ./scripts/authorize-connection.sh
+            interactive: true
+          continueOnError: false
+    - name: app
+      path: infra
+      module: app
+      dependsOn:
+        - triggers
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/app-preprovision.ps1
+          posix:
+            shell: sh
+            run: bash ./scripts/app-preprovision.sh
+          continueOnError: false
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision base
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
 hooks:
-  preprovision:
-    shell: pwsh
-    run: ./infra/scripts/validate-triggers.ps1
-    continueOnError: false
   postdeploy:
-    shell: pwsh
-    run: ./infra/scripts/postdeploy.ps1
-    interactive: true
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: sh
+      run: bash ./infra/scripts/postdeploy.sh
     continueOnError: false

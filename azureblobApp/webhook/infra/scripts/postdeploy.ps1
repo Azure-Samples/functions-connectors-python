@@ -62,10 +62,10 @@ for ($attempt = 1; $attempt -le 100; $attempt++) {
         break
     }
     if ($currentStatus -is [string] -and $currentStatus.Trim() -eq 'Error') {
-        throw 'The managed-identity Blob connection is in Error status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
+        throw 'The managed-identity Blob connection is in Error status. Verify the namespace identity has Storage Blob Data Reader on the container. Allow RBAC propagation, then rerun the hook.'
     }
     if ($attempt -eq 100) {
-        throw 'Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace connection access policy and container Storage Blob Data Reader grant. Allow RBAC propagation, then rerun the hook.'
+        throw 'Timed out waiting for the managed-identity Blob connection to reach Connected or Ready status. Verify the namespace identity has Storage Blob Data Reader on the container. Allow RBAC propagation, then rerun the hook.'
     }
 
     Start-Sleep -Seconds 3

@@ -7,12 +7,8 @@
     "ConnectorNamespace__pollingEndpoint": "https://<namespace-host>",
     "OnDataverseRowChangedTriggerConfigName": "dataverse-ondataverserowchanged",
     "OnDataverseActionPerformedTriggerConfigName": "dataverse-ondataverseactionperformed",
-    "AzureWebJobs.OnDataverseActionPerformed.Disabled": "true",
     "OnDataverseRowAddedTriggerConfigName": "dataverse-ondataverserowadded",
     "OnDataverseRowModifiedTriggerConfigName": "dataverse-ondataverserowmodified",
-    "OnDataverseRowDeletedTriggerConfigName": "dataverse-ondataverserowdeleted",
-    "AzureWebJobs.OnDataverseRowAdded.Disabled": "true",
-    "AzureWebJobs.OnDataverseRowModified.Disabled": "true",
-    "AzureWebJobs.OnDataverseRowDeleted.Disabled": "true"
+    "OnDataverseRowDeletedTriggerConfigName": "dataverse-ondataverserowdeleted"
   }
 }
