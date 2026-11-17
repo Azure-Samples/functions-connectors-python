@@ -30,11 +30,3 @@ The event inventory follows Node webhook revision `158d7e9944caa99f12ec481f1a837
 The converter accepts typed item batches, including Connector Namespace `body` and `body.value` callbacks. Direct Azure DevOps service-hook envelopes with `eventType` and `resource` need separate normalization. Polling adapts the same inventory to Poll delivery; the pinned Node sample does not establish regional Poll support for every operation.
 
 Offline checks do not prove published-wheel contents, bundle startup, regional availability or live delivery. Consent, source creation, callbacks, queue delivery and acknowledgement still need validation in a supported preview region. Each mode documents permissions, setup, reruns and cleanup inline.
-
-## Offline regression tests
-
-From this repository's root, install [tests/requirements.txt](tests/requirements.txt) into a dedicated test environment and run `python -m unittest discover -s vstsApp/tests -p test_review_fixes.py -v`. Use dependencies that contain the Azure DevOps converter and the Functions `DeliveryMode` enum. Source-based validation must put the intended connector SDK on `PYTHONPATH` and verify its import path; it does not validate released wheels.
-
-The tests execute all 18 handlers through the actual converter, reconcile all nine sources per mode against a mocked CLI boundary, and check consent failures, ownership, paging, generated local settings and private-file cleanup. Copied PowerShell and POSIX hooks execute with stub Python commands; POSIX checks use Git Bash on Windows. Windows tests also inspect the resulting DACL. No Azure call executes.
-
-Install the standalone Bicep CLI with snapshot support on `PATH`, or set `BICEP_CLI` to its executable. The suite compiles all 12 Bicep files, checks deployment parameter contracts and connection-policy principals, and runs offline snapshots for both settings merges. Snapshots replace only secure and live-resource input boundaries in temporary copies, not the merge expressions. Bicep tests report a skip if the compiler is missing; shell checks skip if their shell is missing, and Windows-only tests skip on other systems. Preview Connector Namespace resources can produce `BCP081` warnings because Bicep lacks their type definitions.
