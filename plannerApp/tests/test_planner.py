@@ -342,11 +342,16 @@ class SetupTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "regular file"):
                     module.regular_file(Path(directory))
             request = None
-            with self.assertRaisesRegex(RuntimeError, "synthetic"):
+
+            def failing_request():
+                nonlocal request
                 with module.private_json({"secret": "synthetic"}) as argument:
                     request = Path(argument[1:])
                     self.assertTrue(request.exists())
                     raise RuntimeError("synthetic")
+
+            self.assertRaisesRegex(RuntimeError, "synthetic", failing_request)
+            self.assertIsNotNone(request)
             self.assertFalse(request.exists())
 
     def test_each_mode_can_be_copied_without_parent_files(self):

@@ -380,11 +380,17 @@ class SetupTests(unittest.TestCase):
     def test_private_request_cleanup_on_failure(self):
         for mode, helper in HELPERS.items():
             with self.subTest(mode=mode):
-                with self.assertRaisesRegex(RuntimeError, "injected"):
+                path = None
+
+                def failing_request():
+                    nonlocal path
                     with helper.private_json({"secret": "value"}) as argument:
                         path = Path(argument[1:])
                         self.assertEqual(json.loads(path.read_text()), {"secret": "value"})
                         raise RuntimeError("injected")
+
+                self.assertRaisesRegex(RuntimeError, "injected", failing_request)
+                self.assertIsNotNone(path)
                 self.assertFalse(path.exists())
                 self.assertFalse(path.parent.exists())
 

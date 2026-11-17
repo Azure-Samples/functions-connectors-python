@@ -8,7 +8,6 @@ import copy
 import importlib.util
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -394,12 +393,19 @@ class SalesforceSetupTests(unittest.TestCase):
     def test_private_request_cleanup_on_failure(self):
         for mode in MODES:
             helper = load_helper(mode)
-            with self.subTest(mode=mode), self.assertRaises(RuntimeError):
-                with helper.private_json({"secret": "test-only"}) as argument:
-                    path = Path(argument[1:])
-                    self.assertEqual(json.loads(path.read_text()), {"secret": "test-only"})
-                    raise RuntimeError("simulated failure")
-            self.assertFalse(path.exists())
+            with self.subTest(mode=mode):
+                path = None
+
+                def failing_request():
+                    nonlocal path
+                    with helper.private_json({"secret": "test-only"}) as argument:
+                        path = Path(argument[1:])
+                        self.assertEqual(json.loads(path.read_text()), {"secret": "test-only"})
+                        raise RuntimeError("simulated failure")
+
+                self.assertRaisesRegex(RuntimeError, "simulated failure", failing_request)
+                self.assertIsNotNone(path)
+                self.assertFalse(path.exists())
 
     def test_dependency_bundle_and_access_policy_contracts(self):
         for mode in MODES:
