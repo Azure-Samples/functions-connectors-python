@@ -18,16 +18,6 @@ resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-prev
     parameterValueSet: { name: 'EntraOAuth', values: {} }
   }
 }
-resource namespaceAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
-  parent: connection
-  name: 'namespace-msi'
-  properties: {
-    principal: {
-      type: 'ActiveDirectory'
-      identity: { objectId: namespace.identity.principalId, tenantId: tenant().tenantId }
-    }
-  }
-}
 resource developerAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
   parent: connection
   name: 'dev-user'

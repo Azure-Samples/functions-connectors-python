@@ -4,5 +4,5 @@
     "logLevel": {"Microsoft.Azure.Functions.Extensions.Connector": "Information"},
     "applicationInsights": {"samplingSettings": {"isEnabled": true, "excludedTypes": "Request"}}
   },
-  "extensionBundle": {"id": "Microsoft.Azure.Functions.ExtensionBundle.Preview", "version": "[4.50.0, 5.0.0)"}
+  "extensionBundle": {"id": "Microsoft.Azure.Functions.ExtensionBundle", "version": "[4.41.2, 5.0.0)"}
 }

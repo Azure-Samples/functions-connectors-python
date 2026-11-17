@@ -2,6 +2,8 @@ param environmentName string
 param location string
 param connectorNamespaceLocation string
 param userPrincipalId string
+@secure()
+param existingAppSettings object
 
 var token = toLower(uniqueString(subscription().id, environmentName, location, 'vsts-webhook'))
 var tags = { 'azd-env-name': environmentName }
@@ -102,14 +104,14 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
 resource settings 'Microsoft.Web/sites/config@2024-04-01' = {
   parent: app
   name: 'appsettings'
-  properties: union({
+  properties: union(toObject(functions, function => 'AzureWebJobs.${function}.Disabled', function => 'true'), existingAppSettings, {
     AzureWebJobsStorage__accountName: storage.name
     AzureWebJobsStorage__credential: 'managedidentity'
     APPLICATIONINSIGHTS_CONNECTION_STRING: insights.properties.ConnectionString
     APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
     PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
     VstsConnection: namespace.outputs.connectionRuntimeUrl
-  }, toObject(functions, function => 'AzureWebJobs.${function}.Disabled', function => 'true'))
+  })
 }
 resource developerStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for role in storageRoles: {
   scope: storage

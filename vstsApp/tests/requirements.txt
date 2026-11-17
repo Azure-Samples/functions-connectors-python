@@ -1,0 +1,3 @@
+-r ../polling/requirements.txt
+packaging>=24.0
+PyYAML>=6.0

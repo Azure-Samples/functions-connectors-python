@@ -1,0 +1,10 @@
+.azure/
+.venv/
+__pycache__/
+*.py[cod]
+local.settings.json
+.planner-settings-*/
+trigger-inputs.json
+.python_packages/
+build/
+dist/

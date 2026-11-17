@@ -6,6 +6,7 @@
     "location": {"value": "${AZURE_LOCATION}"},
     "connectorNamespaceLocation": {"value": "${CONNECTOR_NAMESPACE_LOCATION=westcentralus}"},
     "applicationInsightsLocation": {"value": "${APPLICATION_INSIGHTS_LOCATION=}"},
-    "userPrincipalId": {"value": "${AZURE_PRINCIPAL_ID}"}
+    "userPrincipalId": {"value": "${AZURE_PRINCIPAL_ID}"},
+    "functionAppExists": {"value": "${PLANNER_FUNCTION_APP_EXISTS=false}"}
   }
 }

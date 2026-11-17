@@ -1,9 +1,8 @@
-param([string] $InputsFile, [switch] $Force)
+param([switch] $Force)
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$helper = (Resolve-Path (Join-Path $PSScriptRoot '../../../scripts/setup.py')).Path
-$arguments = @($helper, '--mode', 'polling', '--project', $project)
-if ($InputsFile) { $arguments += @('--inputs', $InputsFile) }
+$helper = (Resolve-Path (Join-Path $PSScriptRoot 'setup.py')).Path
+$arguments = @($helper, '--mode', 'polling', '--phase', 'local', '--project', $project)
 if ($Force) { $arguments += '--force' }
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw 'Python is required.' }
 & python @arguments

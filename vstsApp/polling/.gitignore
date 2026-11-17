@@ -5,6 +5,8 @@ __pycache__/
 local.settings.json
 trigger-inputs.json
 .vsts-settings-*
+.pytest_cache/
+*.bicep.json
 __azurite_db*__.*
 __blobstorage__/
 __queuestorage__/

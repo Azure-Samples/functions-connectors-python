@@ -2,6 +2,7 @@
 """Receive Salesforce records through Connector Namespace Poll delivery."""
 
 import logging
+from typing import List
 
 import azure.functions as func
 import azurefunctions.extensions.connectors.salesforce as salesforce
@@ -16,7 +17,7 @@ app = func.FunctionApp()
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnSalesforceNewItemsTriggerConfigName%",
 )
-def on_salesforce_new_items(records: list[salesforce.Item]) -> None:
+def on_salesforce_new_items(records: List[salesforce.Item]) -> None:
     """Count new records without logging record contents."""
     logging.info("OnSalesforceNewItems: %d records", len(records))
 
@@ -28,6 +29,6 @@ def on_salesforce_new_items(records: list[salesforce.Item]) -> None:
     delivery_mode=func.DeliveryMode.POLL,
     trigger_config_name="%OnSalesforceUpdatedItemsTriggerConfigName%",
 )
-def on_salesforce_updated_items(records: list[salesforce.Item]) -> None:
+def on_salesforce_updated_items(records: List[salesforce.Item]) -> None:
     """Count changed records without logging record contents."""
     logging.info("OnSalesforceUpdatedItems: %d records", len(records))

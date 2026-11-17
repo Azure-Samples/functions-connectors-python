@@ -10,3 +10,5 @@ azure.yaml
 README.md
 .gitignore
 .vsts-settings-*
+.pytest_cache/
+tests/

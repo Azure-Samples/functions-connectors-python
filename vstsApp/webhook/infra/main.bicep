@@ -8,6 +8,13 @@ param location string
 param connectorNamespaceLocation string = 'brazilsouth'
 @metadata({ azd: { type: 'principalId' } })
 param userPrincipalId string = deployer().objectId
+@allowed(['true', 'false'])
+param functionAppExists string = 'false'
+
+var appName = 'func-${toLower(uniqueString(subscription().id, environmentName, location, 'vsts-webhook'))}'
+var existingAppSettings = functionAppExists == 'true'
+  ? list('${resourceId(subscription().subscriptionId, 'rg-${environmentName}', 'Microsoft.Web/sites', appName)}/config/appsettings', '2024-04-01').properties
+  : {}
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: 'rg-${environmentName}'
@@ -22,6 +29,7 @@ module resources './resources.bicep' = {
     location: location
     connectorNamespaceLocation: connectorNamespaceLocation
     userPrincipalId: userPrincipalId
+    existingAppSettings: existingAppSettings
   }
 }
 output resourceGroupName string = resourceGroup.name

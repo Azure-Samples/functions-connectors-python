@@ -85,64 +85,16 @@ module connector './connector-namespace.bicep' = {
     authenticationParameterSetName: authenticationParameterSetName
   }
 }
-// Source registration and the polling endpoint are deferred until OAuth is Connected.
-module app 'br/public:avm/res/web/site:0.22.0' = {
-  name: 'function-app'
-  scope: rg
-  params: {
-    name: functionName
-    location: location
-    tags: union(tags, { 'azd-service-name': 'function-app' })
-    kind: 'functionapp,linux'
-    serverFarmResourceId: plan.outputs.resourceId
-    httpsOnly: true
-    managedIdentities: { systemAssigned: true }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storage.outputs.primaryBlobEndpoint}${containerName}'
-          authentication: { type: 'SystemAssignedIdentity' }
-        }
-      }
-      scaleAndConcurrency: { instanceMemoryMB: 2048, maximumInstanceCount: 100, alwaysReady: [] }
-      runtime: { name: 'python', version: '3.14' }
-    }
-    siteConfig: { minTlsVersion: '1.2' }
-    configs: [{
-      name: 'appsettings'
-      properties: {
-        AzureWebJobsStorage__credential: 'managedidentity'
-        AzureWebJobsStorage__accountName: storage.outputs.name
-        APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-        APPLICATIONINSIGHTS_CONNECTION_STRING: insights.outputs.connectionString
-        PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-        ConnectorNamespace__credential: 'managedidentity'
-        'AzureWebJobs.OnSalesforceNewItems.Disabled': 'true'
-        'AzureWebJobs.OnSalesforceUpdatedItems.Disabled': 'true'
-      }
-    }]
-  }
-}
-module access './function-access.bicep' = {
-  name: 'function-access'
-  scope: rg
-  params: {
-    functionAppPrincipalId: app.outputs.systemAssignedMIPrincipalId!
-    storageAccountName: storage.outputs.name
-    appInsightsName: insights.outputs.name
-    connectorNamespaceName: connector.outputs.name
-    connectorConnectionName: connector.outputs.connectionName
-  }
-}
-
 output AZURE_SUBSCRIPTION_ID string = subscription().subscriptionId
 output AZURE_LOCATION string = location
 output AZURE_RESOURCE_GROUP string = rg.name
-output FUNCTION_APP_NAME string = app.outputs.name
+output FUNCTION_APP_NAME string = functionName
 output resourceGroupName string = rg.name
-output functionAppName string = app.outputs.name
-output functionAppDefaultHostname string = app.outputs.defaultHostname
+output functionAppName string = functionName
+output functionAppPlanName string = plan.outputs.name
+output storageAccountName string = storage.outputs.name
+output appInsightsName string = insights.outputs.name
+output deploymentStorageContainerName string = containerName
 output connectorNamespaceName string = connector.outputs.name
 output connectorNamespaceResourceId string = connector.outputs.resourceId
 output connectorNamespaceConnectionName string = connector.outputs.connectionName

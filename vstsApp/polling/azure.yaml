@@ -2,23 +2,60 @@
 name: azure-functions-vsts-python-polling
 metadata:
   template: azure-functions-vsts-python-polling@0.0.1-alpha
+requiredVersions:
+  azd: ">= 1.33.0"
+infra:
+  layers:
+    - name: foundation
+      path: infra
+      module: main
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn: [foundation]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/preprovision.ps1
+            interactive: true
+            continueOnError: false
+          posix:
+            shell: sh
+            run: sh ./scripts/preprovision.sh
+            interactive: true
+            continueOnError: false
+    - name: app
+      path: infra
+      module: app
+      dependsOn: [triggers]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/prepare-app.ps1
+            continueOnError: false
+          posix:
+            shell: sh
+            run: sh ./scripts/prepare-app.sh
+            continueOnError: false
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision foundation
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
 hooks:
-  preprovision:
-    windows:
-      shell: pwsh
-      run: ./infra/scripts/preprovision.ps1
-    posix:
-      shell: sh
-      run: ./infra/scripts/preprovision.sh
   postdeploy:
     windows:
       shell: pwsh
       run: ./infra/scripts/postdeploy.ps1
-      interactive: true
+      continueOnError: false
     posix:
       shell: sh
       run: ./infra/scripts/postdeploy.sh
-      interactive: true
+      continueOnError: false
 services:
   function-app:
     project: .

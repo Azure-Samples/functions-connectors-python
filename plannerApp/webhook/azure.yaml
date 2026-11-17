@@ -3,6 +3,13 @@ name: azure-functions-planner-python-webhook
 metadata:
   template: azure-functions-planner-python-webhook@0.0.1-alpha
 hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/detect-app.ps1
+    posix:
+      shell: sh
+      run: sh ./infra/scripts/detect-app.sh
   postdeploy:
     windows:
       shell: pwsh

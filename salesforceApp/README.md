@@ -1,29 +1,28 @@
 # Salesforce connector samples (Python)
 
-Choose [polling](polling/README.md) or [webhook](webhook/README.md). Each folder has its own Azure Developer CLI project and infrastructure. Use a separate azd environment for each mode: a source cannot safely change delivery mode in place. Both modes expose the same functions:
+Choose [polling](polling/README.md) or [webhook](webhook/README.md). Each folder is a standalone copyable Azure Developer CLI project, including its own setup helper, hooks, infrastructure, ignore rules and full permission/setup guide. No parent script is required. Use a separate azd environment for each mode: a source cannot safely change delivery mode in place. Both modes expose the same functions:
 
 | Function | Connector operation | Input type |
 |---|---|---|
-| `OnSalesforceNewItems` | `GetOnNewItems` | `list[salesforce.Item]` |
-| `OnSalesforceUpdatedItems` | `GetOnUpdatedItems` | `list[salesforce.Item]` |
+| `OnSalesforceNewItems` | `GetOnNewItems` | `typing.List[salesforce.Item]` |
+| `OnSalesforceUpdatedItems` | `GetOnUpdatedItems` | `typing.List[salesforce.Item]` |
 
 Handlers log only the function name and record count, never record fields or payloads. The Salesforce extension wraps the generated SDK `Item` model and returns a list of records. These samples demonstrate delivery, not business processing or deduplication.
 
 ## Prerequisites
 
-- Python 3.14 for the deployed app; supported older local runtimes need the manual setup in [Python dependencies](#python-dependencies).
+- Python 3.14 for the deployed app; Python 3.12 and newer local environments install their matching SDK through each mode's requirements.
+- Azure Developer CLI 1.33.0 or newer for layered provisioning.
 - Azure Developer CLI, Azure CLI, and a `connector-namespace` CLI extension that supports `connection authenticate --timeout 300 --no-access-policy`.
 - An Azure subscription with Connector Namespace preview access in the selected region, and Flex Consumption support in the app region.
 - Rights to create resources and role assignments. The developer principal parameter expects a user object ID; service-principal deployments need an explicit developer user ID.
 - A Salesforce account with connector authentication access and permission to read the selected object and fields. Confirm that the Salesforce edition/account supports the API and that new/changed records can be read through the selected connector operations. Do not assume access to an object implies access to every field or record.
 
-The namespace, Function App system-assigned identity, and developer each get a connection access policy. The app and developer get Blob Data Owner, Queue Data Contributor, and Table Data Contributor roles for host/deployment storage. Storage shared-key access and Application Insights local authentication stay off. Application Insights uses Entra authentication and Metrics Publisher grants. Python 3.14 and `FC1` come from `functionAppConfig`; there is no cloud `FUNCTIONS_WORKER_RUNTIME`. `alwaysReady` is empty.
+Only the Function App system-assigned identity and developer get connection access policies; the namespace identity gets no self-access policy. The app and developer get Blob Data Owner, Queue Data Contributor, and Table Data Contributor roles for host/deployment storage. Storage shared-key access and Application Insights local authentication stay off. Application Insights uses Entra authentication and Metrics Publisher grants. Python 3.14 and `FC1` come from `functionAppConfig`; there is no cloud `FUNCTIONS_WORKER_RUNTIME`. `alwaysReady` is empty. Each mode's README lists the required Azure and Salesforce permissions.
 
 ## Python dependencies
 
-Both projects require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`. The requirements select `azure-functions>=2.4.0` only when `python_version >= '3.13'`. The deployed apps use Python 3.14; local development does not require Python 3.13+.
-
-For supported local Python 3.12 and older runtimes, create and activate a virtual environment, manually install `azure-functions>=1.27.0b1` with pip's `--pre` option **before** installing the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in local settings. The requirements marker skips the Functions SDK on these runtimes; it does not install an older version automatically.
+Both projects require `azurefunctions-extensions-connectors>=1.0.0`; its SDK dependency is transitive, not a direct sample requirement. Requirements select `azure-functions>=1.27.0b1` when `python_version < '3.13'` and `azure-functions>=2.4.0` when `python_version >= '3.13'`. Install the selected mode's requirements in an activated virtual environment; no manual Functions SDK bootstrap is needed. Generated cloud/local settings and public examples use `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`. Both hosts use stable `Microsoft.Azure.Functions.ExtensionBundle` range `[4.41.2, 5.0.0)`.
 
 ## Reviewed trigger inputs
 
@@ -43,19 +42,21 @@ The infrastructure keeps the pinned `BasicAuthentication` selector by default. `
 
 ## Provision and register
 
-Run `azd up` from the chosen mode folder after signing in to Azure. The root `postdeploy` hook runs only after code deployment. It validates azd outputs, pins every Azure command to the provisioned subscription, authenticates Salesforce if needed, then inventories the namespace and checks ownership for **both** known functions before any trigger write.
+Run `azd up` from the chosen mode folder after signing in to Azure. Polling provisions foundation resources, then obtains consent and validates source selection in the triggers layer hook. That hook reconciles enabled Poll configs and waits for ready receive endpoints **before** the app layer creates/configures the app and deploys code. Poll postdeploy only writes local settings. See the [polling deployment and rerun guide](polling/README.md#provision-and-deploy).
 
-Initial cloud listeners stay disabled. Poll sources are not Bicep resources: the hook creates them only after authentication. Webhooks use the verified deployed `defaultHostName` and the `connector_extension` system key. The key goes into `notificationDetails.authentication` as QueryString authentication named `code`, never into an output, local setting, or printed command. JSON requests and cloud settings use private temporary files that the helper removes on every exit.
+Webhook provisions foundation and app layers, deploys code with sample listeners disabled, then registers sources in postdeploy after consent and host readiness. It uses the verified deployed `defaultHostName` and `connector_extension` system key. The key goes into `notificationDetails.authentication` as QueryString authentication named `code`, never an output or local setting. See the [webhook guide](webhook/README.md#provision-and-deploy).
 
-Source registration must report `Succeeded`; failed, canceled, or indefinitely pending sources stop the hook. The hook enables only selected listeners after readiness checks and disables deselected owned sources by changing only `state` to `Disabled`. It does not DELETE anything. Unchanged sources receive no PUT; updates preserve other writable properties and omit server-generated `provisioningState` and `pollingEndpoints`. A different app, connection, operation, or delivery mode with the same source name stops setup rather than overwriting it.
+Both modes validate azd outputs, pin Azure requests to the provisioned subscription, and inventory/check ownership of **both** known source names before trigger writes. Both app layers read existing settings and merge sample-owned values without dropping unrelated settings. Webhook's final listener update also reads and merges existing cloud settings. JSON requests and settings use private temporary files removed on success/failure.
 
-To change selected objects/events or recover after consent/registration failure, edit ignored `trigger-inputs.json` and rerun `azd hooks run postdeploy`. Source changes are not a transaction: if a later source or settings write fails, earlier writes may remain. Listeners remain in their prior state until the final settings write. Rerun after resolving the failure; do not claim a partial run succeeded.
+Selected source registration must report `Succeeded` and `Enabled`; failed, canceled, disabled or indefinitely pending sources stop setup. Only selected listeners are enabled, and only owned deselected sources change `state` to `Disabled`. The helper never deletes configs. Unchanged sources receive no PUT; updates preserve other writable properties and omit server-generated `provisioningState` and `pollingEndpoints`. A different app, connection, operation, or delivery mode with the same source name stops setup rather than overwriting it.
+
+To change polling selection, edit ignored `trigger-inputs.json`, then rerun `azd provision triggers`, `azd provision app`, and `azd deploy --all` in order. For webhook selection, rerun `azd hooks run postdeploy`. Source/deployment/settings changes are not a transaction: earlier writes may remain after a failure, and enabled Poll configs may collect events before an app consumes them. Resolve failures and rerun in order; do not claim partial success. Avoid concurrent settings writers against the same app.
 
 ## Local settings and privacy
 
 The hook creates ignored `local.settings.json` atomically with Azurite host storage and developer authentication. It preserves an existing file byte-for-byte; pass `--force` to the Python helper (or `-ForceLocalSettings` to PowerShell) to replace it explicitly. No managed-identity cloud credential/client ID or callback key is copied into local settings. Run Azurite before starting a local host. Public examples start with both functions disabled and contain no resource IDs or secrets.
 
-Both shell wrappers call `salesforceApp/scripts/setup.py` via `../../../scripts/setup.py`. The PowerShell postdeploy wrapper accepts `-Inputs <path>`; the shell wrapper forwards `--inputs <path>` and `--force`. The helper accepts `--mode polling|webhook --project <mode-folder>`. Running setup makes Azure changes; importing it does not.
+Each mode's PowerShell and POSIX wrappers call its own `infra/scripts/setup.py`. The helper accepts `--mode polling|webhook --project <mode-folder>` and a layer `--phase triggers|app|postdeploy`. Polling reads reviewed inputs in the triggers phase, not postdeploy. Webhook's postdeploy wrapper accepts `-Inputs <path>` on PowerShell or `--inputs <path>` on POSIX. Running setup may make Azure changes; importing it does not. Copy either mode alone with its dotfiles to retain all hooks and ignore rules.
 
 Private local settings, trigger inputs, azd environments, Python caches, and staging files are excluded from Git and/or deployment. Do not enable verbose CLI output around secret-bearing requests. The authentication CLI inherits the terminal's input and output without capture and rejects noninteractive input; enter credentials only in its own browser or terminal, never in the input JSON.
 

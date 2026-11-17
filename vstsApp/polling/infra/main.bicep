@@ -28,7 +28,9 @@ module resources './resources.bicep' = {
 
 output resourceGroupName string = resourceGroup.name
 output functionAppName string = resources.outputs.functionAppName
-output FUNCTION_APP_HOSTNAME string = resources.outputs.functionAppHostname
+output storageName string = resources.outputs.storageName
+output insightsName string = resources.outputs.insightsName
+output planName string = resources.outputs.planName
 output connectorNamespaceName string = resources.outputs.namespaceName
 output connectorNamespaceResourceId string = resources.outputs.namespaceId
 output connectorNamespaceConnectionName string = resources.outputs.connectionName

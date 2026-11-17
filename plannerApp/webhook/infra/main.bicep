@@ -9,6 +9,8 @@ param connectorNamespaceLocation string = 'westcentralus'
 param applicationInsightsLocation string = ''
 @metadata({ azd: { type: 'principalId' } })
 param userPrincipalId string = deployer().objectId
+@allowed(['true', 'false'])
+param functionAppExists string = 'false'
 
 var token = toLower(uniqueString(subscription().id, environmentName, location, 'planner-webhook'))
 var tags = { 'azd-env-name': environmentName }
@@ -19,6 +21,9 @@ var connectionName = 'planner-${token}'
 var containerName = 'app-package-${token}'
 var functions = ['OnPlannerCompleteTask', 'OnPlannerNewTask', 'OnPlannerTaskAssignedToMe']
 var disabledSettings = toObject(functions, function => 'AzureWebJobs.${function}.Disabled', function => 'true')
+var existingAppSettings = functionAppExists == 'true'
+  ? list('${resourceId(subscription().subscriptionId, 'rg-${environmentName}', 'Microsoft.Web/sites', appName)}/config/appsettings', '2024-04-01').properties
+  : {}
 
 resource group 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: 'rg-${environmentName}'
@@ -108,21 +113,20 @@ module app 'br/public:avm/res/web/site:0.22.0' = {
       runtime: { name: 'python', version: '3.14' }
     }
     siteConfig: { minTlsVersion: '1.2' }
-    configs: [{
-      name: 'appsettings'
-      properties: union({
-        AzureWebJobsStorage__credential: 'managedidentity'
-        AzureWebJobsStorage__accountName: storage.outputs.name
-        AzureWebJobsStorage__blobServiceUri: storage.outputs.primaryBlobEndpoint
-        AzureWebJobsStorage__queueServiceUri: 'https://${storage.outputs.name}.queue.${environment().suffixes.storage}'
-        AzureWebJobsStorage__tableServiceUri: 'https://${storage.outputs.name}.table.${environment().suffixes.storage}'
-        APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-        APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
-        PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-        ConnectorNamespace__credential: 'managedidentity'
-      }, disabledSettings)
-    }]
   }
+}
+
+module settings './app-settings.bicep' = {
+  name: '${appName}-settings'
+  scope: group
+  params: {
+    functionAppName: appName
+    storageAccountName: storage.outputs.name
+    appInsightsName: monitoring.outputs.name
+    existingAppSettings: existingAppSettings
+    listenerSettings: disabledSettings
+  }
+  dependsOn: [app]
 }
 
 module access './function-access.bicep' = {

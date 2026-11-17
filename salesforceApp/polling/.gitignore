@@ -10,4 +10,8 @@ salesforce-hook-*/
 .func/
 bin/
 obj/
+infra/*.json.tmp
 infra/main.json
+infra/app.json
+infra/app-settings.json
+infra/triggers.json

@@ -10,3 +10,4 @@ salesforce-hook-*
 infra
 README.md
 .func
+tests

@@ -1,11 +1,13 @@
 # Azure DevOps connector triggers (Python)
 
-Choose one independent Function App project:
+Choose one independent, copyable Function App project. Each mode contains its own infrastructure, shell hooks, standard-library setup helper, ignore rules and complete setup instructions:
 
-- [Polling](polling/README.md): Connector Namespace queues source events; the Function App receives and acknowledges them.
-- [Webhook](webhook/README.md): Connector Namespace sends events to the deployed Function App's connector callback.
+- [Polling](polling/README.md): provision a foundation, complete Entra consent and interactive source selection, register enabled Poll configs, provision the app with its endpoint and listener settings, then deploy code.
+- [Webhook](webhook/README.md): provision and deploy the app, then complete Entra consent and register callbacks from a reviewed mode-local input file.
 
-Both projects register the same nine events. Each handler accepts a typed list from `azurefunctions.extensions.connectors.visualstudioteamservices`, logs only the trigger name and item count, and returns `None`. The extension converts payloads into SDK items; handlers do not log fields or return payloads.
+Use distinct azd environments. Neither mode needs this parent directory at runtime. Both validate ownership before updating sources, disable only owned deselected configs, and preserve unrelated app settings on reprovision. Connection policies grant access to the developer and Function App, not to the namespace itself.
+
+The nine handlers in each mode use `typing.List` annotations from `azurefunctions.extensions.connectors.visualstudioteamservices`, log only names and counts, and return `None`.
 
 | Events | Handler item type |
 |---|---|
@@ -13,20 +15,26 @@ Both projects register the same nine events. Each handler accepts a typed list f
 | Git pull request created or closed | `devops.GitPullRequest` |
 | Git push | `devops.GitPush` |
 | TFVC check-in | `devops.TfvcChangeset` |
-| Work item assigned, closed, created, or updated | `devops.TriggerWorkItemResponse` |
+| Work item assigned, closed, created or updated | `devops.TriggerWorkItemResponse` |
 
-Install each mode's requirements and use a package build that contains the Azure DevOps bindings above. Offline conversion checks use the local extension and connector SDK source checkouts, not a published-wheel installation; they do not establish that published wheels contain these bindings.
+## Dependencies and runtime
 
-The event names and webhook contract follow the Node sample at revision `158d7e9944caa99f12ec481f1a837320720916d6`. Its typed contexts use the same five item models and normalize Connector Namespace callbacks with an item in `body` or an array in `body.value`. The Python converter accepts these item batches in both delivery modes. This is not a direct Azure DevOps service-hook receiver: an envelope with `eventType` and `resource` needs separate normalization and is not the item contract tested here. Required parameter names follow the generated Python connector's `TRIGGER_OPERATIONS` metadata at revision `ef2011621f4ad64838a8a18c5720aef840fdfe46`. The hook checks the live exported Swagger again before registering sources.
+Each mode installs `azurefunctions-extensions-connectors>=1.0.0`; its dependency supplies the connector SDK. No separate direct `azure-connectors` requirement is needed. Requirements select `azure-functions>=1.27.0b1` below Python 3.13 and `azure-functions>=2.4.0` for Python 3.13+. Use pip's `--pre` option if needed for the older-runtime prerelease. Both local examples and generated Values include `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`. Existing local settings remain unchanged unless you request a refresh; add isolation yourself or use the mode's force-refresh option.
 
-Polling is an additional delivery-mode adaptation, not a feature demonstrated by the pinned Node webhook sample. All nine sources can be selected for Poll delivery; registration and end-to-end delivery still need validation in a supported preview region. These files do not claim live deployment or event-delivery results.
+Cloud apps use Python 3.14 Flex Consumption. Both hosts use `Microsoft.Azure.Functions.ExtensionBundle` range `[4.41.2, 5.0.0)`, not the preview bundle.
 
-Each mode owns its Bicep, host configuration, input file, requirements, and shell hooks. Only the standard-library setup helper is shared within this app. Use different azd environment names for the two modes.
+## Contract and validation limits
 
-Source selection is a reviewed JSON file, not an interactive picker. Missing or malformed input and missing required wire keys fail locally before any CLI call. Unknown filters or unsupported schemas fail after the read-only Swagger check, before source or app-settings writes. Browser consent is the only interactive step; an already Connected EntraOAuth connection needs no prompt.
+The event inventory follows Node webhook revision `158d7e9944caa99f12ec481f1a837320720916d6`. Required wire names follow Python trigger metadata revision `ef2011621f4ad64838a8a18c5720aef840fdfe46`. Each mode checks live exported Swagger before source writes.
 
-## Python dependencies
+The converter accepts typed item batches, including Connector Namespace `body` and `body.value` callbacks. Direct Azure DevOps service-hook envelopes with `eventType` and `resource` need separate normalization. Polling adapts the same inventory to Poll delivery; the pinned Node sample does not establish regional Poll support for every operation.
 
-Both projects require `azure-connectors>=1.0.0` and `azurefunctions-extensions-connectors>=1.0.0`. The requirements select `azure-functions>=2.4.0` only when `python_version >= '3.13'`. The deployed apps use Python 3.14; local development does not require Python 3.13+.
+Offline checks do not prove published-wheel contents, bundle startup, regional availability or live delivery. Consent, source creation, callbacks, queue delivery and acknowledgement still need validation in a supported preview region. Each mode documents permissions, setup, reruns and cleanup inline.
 
-For supported local Python 3.12 and older runtimes, create and activate a virtual environment, manually install `azure-functions>=1.27.0b1` with pip's `--pre` option **before** installing the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in local settings. The requirements marker skips the Functions SDK on these runtimes; it does not install an older version automatically.
+## Offline regression tests
+
+From this repository's root, install [tests/requirements.txt](tests/requirements.txt) into a dedicated test environment and run `python -m unittest discover -s vstsApp/tests -p test_review_fixes.py -v`. Use dependencies that contain the Azure DevOps converter and the Functions `DeliveryMode` enum. Source-based validation must put the intended connector SDK on `PYTHONPATH` and verify its import path; it does not validate released wheels.
+
+The tests execute all 18 handlers through the actual converter, reconcile all nine sources per mode against a mocked CLI boundary, and check consent failures, ownership, paging, generated local settings and private-file cleanup. Copied PowerShell and POSIX hooks execute with stub Python commands; POSIX checks use Git Bash on Windows. Windows tests also inspect the resulting DACL. No Azure call executes.
+
+Install the standalone Bicep CLI with snapshot support on `PATH`, or set `BICEP_CLI` to its executable. The suite compiles all 12 Bicep files, checks deployment parameter contracts and connection-policy principals, and runs offline snapshots for both settings merges. Snapshots replace only secure and live-resource input boundaries in temporary copies, not the merge expressions. Bicep tests report a skip if the compiler is missing; shell checks skip if their shell is missing, and Windows-only tests skip on other systems. Preview Connector Namespace resources can produce `BCP081` warnings because Bicep lacks their type definitions.

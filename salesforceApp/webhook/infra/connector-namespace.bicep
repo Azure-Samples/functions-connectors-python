@@ -22,15 +22,13 @@ resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-prev
   })
 }
 
-var principalNames = ['namespace-msi', 'dev-user']
-var principalIds = { 'namespace-msi': connectorNamespace.identity.principalId, 'dev-user': userPrincipalId }
-resource accessPolicies 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = [for principalName in principalNames: {
+resource developerAccess 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
   parent: connection
-  name: principalName
+  name: 'dev-user'
   properties: {
-    principal: { type: 'ActiveDirectory', identity: { objectId: principalIds[principalName], tenantId: tenant().tenantId } }
+    principal: { type: 'ActiveDirectory', identity: { objectId: userPrincipalId, tenantId: tenant().tenantId } }
   }
-}]
+}
 
 output name string = connectorNamespace.name
 output resourceId string = connectorNamespace.id

@@ -17,9 +17,6 @@ var storageName = 'st${token}'
 var namespaceName = 'cn-${token}'
 var connectionName = 'planner-${token}'
 var containerName = 'app-package-${token}'
-var functions = ['OnPlannerCompleteTask', 'OnPlannerNewTask', 'OnPlannerTaskAssignedToMe']
-var disabledSettings = toObject(functions, function => 'AzureWebJobs.${function}.Disabled', function => 'true')
-var triggerNames = toObject(functions, function => '${function}TriggerConfigName', function => '${connectionName}-polling-${toLower(function)}')
 
 resource group 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: 'rg-${environmentName}'
@@ -86,63 +83,12 @@ module namespace './connector-namespace.bicep' = {
   }
 }
 
-// Disabled listeners have real future config names, but no invented service endpoint.
-// The postdeploy hook registers Poll sources only after Planner OAuth is Connected.
-module app 'br/public:avm/res/web/site:0.22.0' = {
-  name: 'app'
-  scope: group
-  params: {
-    name: appName
-    location: location
-    tags: union(tags, { 'azd-service-name': 'function-app' })
-    kind: 'functionapp,linux'
-    serverFarmResourceId: plan.outputs.resourceId
-    httpsOnly: true
-    managedIdentities: { systemAssigned: true }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storage.outputs.primaryBlobEndpoint}${containerName}'
-          authentication: { type: 'SystemAssignedIdentity' }
-        }
-      }
-      scaleAndConcurrency: { instanceMemoryMB: 2048, maximumInstanceCount: 100, alwaysReady: [] }
-      runtime: { name: 'python', version: '3.14' }
-    }
-    siteConfig: { minTlsVersion: '1.2' }
-    configs: [{
-      name: 'appsettings'
-      properties: union({
-        AzureWebJobsStorage__credential: 'managedidentity'
-        AzureWebJobsStorage__accountName: storage.outputs.name
-        AzureWebJobsStorage__blobServiceUri: storage.outputs.primaryBlobEndpoint
-        AzureWebJobsStorage__queueServiceUri: 'https://${storage.outputs.name}.queue.${environment().suffixes.storage}'
-        AzureWebJobsStorage__tableServiceUri: 'https://${storage.outputs.name}.table.${environment().suffixes.storage}'
-        APPLICATIONINSIGHTS_AUTHENTICATION_STRING: 'Authorization=AAD'
-        APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
-        PYTHON_ISOLATE_WORKER_DEPENDENCIES: '1'
-        ConnectorNamespace__credential: 'managedidentity'
-      }, disabledSettings, triggerNames)
-    }]
-  }
-}
-
-module access './function-access.bicep' = {
-  name: 'function-access'
-  scope: group
-  params: {
-    functionAppPrincipalId: app.outputs.systemAssignedMIPrincipalId!
-    storageAccountName: storage.outputs.name
-    appInsightsName: monitoring.outputs.name
-    connectorNamespaceName: namespace.outputs.name
-    connectorConnectionName: namespace.outputs.connectionName
-  }
-}
-
 output AZURE_SUBSCRIPTION_ID string = subscription().subscriptionId
 output resourceGroupName string = group.name
-output functionAppName string = app.outputs.name
-output functionAppDefaultHostname string = app.outputs.defaultHostname
+output functionAppName string = appName
+output functionAppPlanName string = plan.outputs.name
+output storageAccountName string = storage.outputs.name
+output appInsightsName string = monitoring.outputs.name
+output deploymentStorageContainerName string = containerName
 output connectorNamespaceName string = namespace.outputs.name
 output connectorNamespaceConnectionName string = namespace.outputs.connectionName

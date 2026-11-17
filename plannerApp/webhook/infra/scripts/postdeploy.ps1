@@ -1,7 +1,7 @@
 param([string] $InputsFile, [switch] $Force)
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$helper = (Resolve-Path (Join-Path $PSScriptRoot '../../../scripts/setup.py')).Path
+$helper = (Resolve-Path (Join-Path $PSScriptRoot 'setup.py')).Path
 $arguments = @($helper, '--mode', 'webhook', '--project', $project)
 if ($InputsFile) { $arguments += @('--inputs', $InputsFile) }
 if ($Force) { $arguments += '--force' }

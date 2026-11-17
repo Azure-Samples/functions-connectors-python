@@ -1,10 +1,11 @@
 # Copyright (c) Microsoft Corporation.  All rights reserved.
-"""Set up Salesforce sources after deployment; importing this module has no side effects."""
+"""Legacy entry point; each standalone mode owns its current setup implementation."""
 
 from __future__ import annotations
 
 import argparse
 import copy
+import importlib.util
 import ipaddress
 import json
 import os
@@ -486,23 +487,15 @@ def write_local_settings(path: Path, cloud: dict[str, str], *, force: bool = Fal
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Run the shared hook only on explicit invocation."""
+    """Forward legacy invocations to the selected mode's local helper."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("polling", "webhook"), required=True)
-    parser.add_argument("--project", type=Path, required=True)
-    parser.add_argument("--inputs", type=Path)
-    parser.add_argument("--force", "--force-local-settings", action="store_true")
-    options = parser.parse_args(argv)
-    project = options.project.resolve()
-    outputs = cli("azd", "env", "get-values", "--output", "json")
-    if not isinstance(outputs, dict):
-        raise ValueError("Invalid azd deployment outputs.")
-    root = context(outputs)
-    authorize(outputs, root)
-    triggers = collect_inputs(options.inputs or project / "trigger-inputs.json")
-    settings = configure(outputs, root, options.mode, triggers)
-    changed = write_local_settings(project / "local.settings.json", settings, force=options.force)
-    print("Salesforce setup complete. " + ("Created restricted local settings." if changed else "Existing local settings preserved."))
+    options, _ = parser.parse_known_args(argv)
+    specification = importlib.util.spec_from_file_location(
+        "salesforce_local_setup", Path(__file__).resolve().parents[1] / options.mode / "infra/scripts/setup.py")
+    helper = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(helper)
+    helper.main(argv)
 
 
 if __name__ == "__main__":
