@@ -1,0 +1,12 @@
+.azure/
+.venv/
+__pycache__/
+*.pyc
+local.settings.json
+trigger-inputs.json
+.azuredevops-settings-*
+.pytest_cache/
+*.bicep.json
+__azurite_db*__.*
+__blobstorage__/
+__queuestorage__/

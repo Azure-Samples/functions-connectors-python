@@ -1,0 +1,27 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+    "ConnectorNamespace__pollingEndpoint": "",
+    "OnAzureDevOpsBuildCompletedTriggerConfigName": "",
+    "OnAzureDevOpsGitPullClosedTriggerConfigName": "",
+    "OnAzureDevOpsGitPullCreatedTriggerConfigName": "",
+    "OnAzureDevOpsGitPushTriggerConfigName": "",
+    "OnAzureDevOpsTfvcCheckInTriggerConfigName": "",
+    "OnAzureDevOpsWorkItemAssignedTriggerConfigName": "",
+    "OnAzureDevOpsWorkItemClosedTriggerConfigName": "",
+    "OnAzureDevOpsWorkItemCreatedTriggerConfigName": "",
+    "OnAzureDevOpsWorkItemUpdatedTriggerConfigName": "",
+    "AzureWebJobs.OnAzureDevOpsBuildCompleted.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsGitPullClosed.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsGitPullCreated.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsGitPush.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsTfvcCheckIn.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsWorkItemAssigned.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsWorkItemClosed.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsWorkItemCreated.Disabled": "true",
+    "AzureWebJobs.OnAzureDevOpsWorkItemUpdated.Disabled": "true"
+  }
+}

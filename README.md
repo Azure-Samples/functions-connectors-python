@@ -45,7 +45,7 @@ The included deployment templates use Python 3.14 on Flex Consumption.
 | [Azure Blob](./azureblobApp/README.md) | [Azure Blob Storage](https://learn.microsoft.com/connectors/azureblob/) |
 | [Generic](./genericApp/README.md) | [Any connector](https://learn.microsoft.com/connectors/), using raw string payloads |
 | [Kusto](./kustoApp/README.md) | [Azure Data Explorer](https://learn.microsoft.com/connectors/kusto/) |
-| [Azure DevOps](./vstsApp/README.md) | [Azure DevOps (Entra OAuth)](https://learn.microsoft.com/connectors/visualstudioteamservices/) |
+| [Azure DevOps](./azureDevOpsApp/README.md) | [Azure DevOps (Entra OAuth)](https://learn.microsoft.com/connectors/visualstudioteamservices/) |
 | [Planner](./plannerApp/README.md) | [Microsoft Planner](https://learn.microsoft.com/connectors/planner/) |
 | [Salesforce](./salesforceApp/README.md) | [Salesforce](https://learn.microsoft.com/connectors/salesforce/) |
 
