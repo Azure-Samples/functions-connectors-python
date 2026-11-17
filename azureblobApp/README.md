@@ -1,19 +1,8 @@
 # Azure Blob connector triggers (Python)
 
-Choose a standalone [polling app](./polling/README.md) or
-[webhook app](./webhook/README.md). Both run `OnAzureBlobUpdatedFile` for the
-Azure Blob connector's `OnUpdatedFiles_V2` operation when a blob is added or modified.
-This is the **Connector Namespace** integration, not the native Storage BlobTrigger.
+Choose a standalone [polling app](./polling/README.md) or [webhook app](./webhook/README.md). Both run `OnAzureBlobUpdatedFile` for the Azure Blob connector's [`OnUpdatedFiles_V2`](https://learn.microsoft.com/connectors/azureblob/#when-a-blob-is-added-or-modified-(properties-only)-(v2)) operation when a blob is added or modified. This is the **Connector Namespace** integration, not the native Storage BlobTrigger.
 
-Both apps use the same raw `str` payload, metadata parser, and handler. The Python
-connector binding extension has no supported Azure Blob SDK model binding.
-Polling adds only `delivery_mode=func.DeliveryMode.POLL` and
-`trigger_config_name="%OnAzureBlobUpdatedFileTriggerConfigName%"` to the decorator.
-Both use `connection="ConnectorNamespace"`.
-
-Each folder includes its own infrastructure, dependencies, hooks, and local
-settings example. Run `azd up` from the chosen folder. Use different azd environment
-names if you deploy both, so they do not overwrite resources.
+Each folder includes its own infrastructure, dependencies, hooks, and local settings example. Run `azd up` from the chosen folder. Use different azd environment names if you deploy both, so they do not overwrite resources.
 
 | Delivery | How it receives events |
 | --- | --- |
@@ -24,15 +13,12 @@ names if you deploy both, so they do not overwrite resources.
 
 | Python | Minimum Functions SDK | Required app setting |
 | --- | --- | --- |
-| 3.13+ | `azure-functions>=2.4.0b1` | None |
-| 3.12 and older supported versions | `azure-functions>=1.27.0b1` | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
+| 3.13+ | `azure-functions>=2.4.0` | None |
+| 3.12 and older supported versions | `azure-functions>=1.27.0b1`, installed manually | `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` |
 
-Both requirements files select the SDK through Python-version markers and retain
-`azurefunctions-extensions-connectors>=1.0.0b4`. Deployment uses Python 3.14;
-the templates and local examples include worker isolation for older runtimes.
+Requirements install the SDK only on Python 3.13+; on older versions, install it before the sample requirements. Both apps require `azurefunctions-extensions-connectors>=1.0.0`. Deployment uses Python 3.14.
 
 > [!CAUTION]
-> The handlers log blob names, paths, sizes, and modification times. Use test data,
-> restrict log access, and run `azd down --purge` from the app folder when finished.
+> The handlers log blob names, paths, sizes, and modification times. Use test data, restrict log access, and run `azd down --purge` from the app folder when finished.
 
 See the [Azure Blob connector reference](https://learn.microsoft.com/connectors/azureblob/).

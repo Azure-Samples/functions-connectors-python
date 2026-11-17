@@ -3,14 +3,16 @@ metadata:
   template: functions-connectors-python-azureblob-polling@0.0.1-alpha
 hooks:
   postdeploy:
-    interactive: true
-    continueOnError: false
     windows:
       shell: pwsh
       run: ./infra/scripts/postdeploy.ps1
+      interactive: false
+      continueOnError: false
     posix:
       shell: sh
-      run: ./infra/scripts/postdeploy.sh
+      run: bash ./infra/scripts/postdeploy.sh
+      interactive: false
+      continueOnError: false
 services:
   function-app:
     project: .

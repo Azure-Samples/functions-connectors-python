@@ -1,99 +1,47 @@
-# Generic connector webhook triggers (Python)
+# Generic connector webhook trigger (Python)
 
-Five functions preserve the existing illustrative names. Each receives raw `str`
-and logs only `<FunctionName> (generic API) trigger received.` No payload parsing,
-event-content logging, or connector SDK models are used.
+`OnGenericConnectorEvent` receives raw `str` payloads from any supported connector operation configured for webhook delivery. The handler logs only the function name.
 
-| Function | Example operation |
-| --- | --- |
-| `OnGenericOffice365NewEmail` | Office 365 `OnNewEmailV3` |
-| `OnGenericAzureBlobUpdated` | Azure Blob `OnUpdatedFiles_V2` |
-| `OnGenericSharepointNewFile` | SharePoint `GetOnNewFileItems` |
-| `OnGenericTeamsChannelMessage` | Teams `OnNewChannelMessage` |
-| `OnGenericCustomConnectorEvent` | Another supported connector operation |
-
-These are illustrative mappings, not provisioned resources. The function name
-routes its callback; it does not subscribe automatically. Choose a supported
-operation, connection, and parameters in each Connector Namespace trigger config.
+This folder is a standalone Function App. Run all commands from this folder; no parent or sibling files are required. It does not provision Azure resources.
 
 ## Prerequisites
 
-- Functions Core Tools v4, a supported Python runtime, Azure CLI, and Azurite for local storage.
-- An existing Connector Namespace identity, authorized connection, and enabled
-  Webhook trigger configs. Follow the [webhook configuration guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#webhook-delivery).
-- Requirements select `azure-functions>=2.4.0b1` on Python 3.13+, or
-  `azure-functions>=1.27.0b1` for older supported versions. On Python 3.12 and older,
-  set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in Azure. The local example
-  includes it. No connector SDK or rich binding extension package is required.
-
-This app has no provisioning template, `azd up`, or postdeploy hooks. Use a dedicated
-connector sample to provision resources or configure existing resources manually.
+- A supported Python version, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), Azure CLI, and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
+- An existing Connector Namespace, authorized connection, and enabled webhook trigger configs. See the [webhook setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#webhook-delivery).
+- An existing Python Function App with host and deployment storage for Azure deployment.
+- `azure-functions>=2.4.0` for Python 3.13+. For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK.
 
 ## Configure and deploy
 
-Publish to an existing Python Function App with configured host/deployment storage:
-
-Enable its **system-assigned managed identity** and keep the namespace identity.
-Set `AzureWebJobsStorage__credential=managedidentity` and the host account's
-`AzureWebJobsStorage__blobServiceUri`, `AzureWebJobsStorage__queueServiceUri`, and
-`AzureWebJobsStorage__tableServiceUri`. Grant the app principal
-Storage Blob Data Owner, Storage Queue Data Contributor, and
-Storage Table Data Contributor on the host account. For Flex deployment storage, use `SystemAssignedIdentity` and grant
-Storage Blob Data Contributor on its container (covered by Blob Data Owner when
-the account is shared). Do not deploy `FUNCTIONS_WORKER_RUNTIME` on Flex.
+Enable the app's system-assigned identity. Configure identity-based host storage with `AzureWebJobsStorage__credential=managedidentity` and the account's `__blobServiceUri`, `__queueServiceUri`, and `__tableServiceUri` settings. Grant Storage Blob Data Owner, Storage Queue Data Contributor, and Storage Table Data Contributor on the host account. For Flex deployment storage, use `SystemAssignedIdentity` and grant Storage Blob Data Contributor on the deployment container. Do not set `FUNCTIONS_WORKER_RUNTIME` on Flex.
 
 ```bash
-cd genericApp/webhook
+az login
 func azure functionapp publish <function-app-name>
 ```
 
-Local settings are not published. Keep the included Preview extension bundle and
-configure dependency isolation for Python 3.12 and older.
+For each trigger config, set `notificationDetails.callbackUrl` to `https://<function-app-host>/runtime/webhooks/connector?functionName=OnGenericConnectorEvent`. Set `notificationDetails.authentication` to `type: "QueryString"`, `name: "code"`, and `value` to the host's **`connector_extension` system key**, not an ordinary function key. Keep the key private.
 
-For each namespace trigger, set `notificationDetails.callbackUrl` to:
+Keep the included Preview extension bundle in the deployed host configuration. Python 3.12 and older require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in Azure and local settings.
 
-```text
-https://<actual-function-app-host>/runtime/webhooks/connector?functionName=<FunctionName>
-```
+For Microsoft Entra authenticated telemetry, configure Application Insights, grant the app identity Monitoring Metrics Publisher, and set `APPLICATIONINSIGHTS_AUTHENTICATION_STRING=Authorization=AAD` and `ConnectorNamespace__credential=managedidentity`. Omit the latter locally to use developer credentials.
 
-Set `notificationDetails.authentication` to `type: "QueryString"`, `name: "code"`,
-and `value` equal to the host's **`connector_extension` system key**, not an ordinary
-function key. Do not print or commit the key. Source operation parameters remain
-connector-specific; raw-string binding does not change them.
+## Local development
 
-## Run locally
-
-If missing, copy `local.settings.example.json` to `local.settings.json`, preserving
-existing settings. Create and activate a virtual environment and install requirements:
+- Copy `local.settings.example.json` to `local.settings.json` if absent.
+- Start Azurite separately, then run:
 
 ```bash
 python -m venv .venv
-# Activate .venv using the command for your shell.
+# Activate .venv for your shell.
 python -m pip install -r requirements.txt
 func start --enableAuth
 ```
 
-Start Azurite separately first. Core Tools bypasses key checks locally by default;
-use `--enableAuth` before exposing the host publicly. To receive real events locally, expose the host
-through a secure public HTTPS tunnel and configure separate trigger callbacks using
-the local function names and connector extension system key. Remote host keys do
-not authenticate the local host. Restore deployed callbacks if you change them,
-or use the [polling app](../polling) to avoid a public tunnel.
+- To receive local events, expose the host through a secure public HTTPS tunnel and configure callbacks using `OnGenericConnectorEvent` and the local `connector_extension` system key.
+- Core Tools bypasses key checks by default; enable authentication before exposing the host.
+- Restore deployed callbacks if you change them.
 
 ## Verify and clean up
 
-Cause the configured source event and confirm a successful function invocation
-with the matching receipt log. A running host alone does not prove delivery.
-Logs intentionally exclude payloads. Treat delivery as at least once when adding
-side effects. Never commit tokens, callback keys, or private local settings.
-
-Disable or remove only trigger configurations created for your test. Do not delete
-shared resources. Configure host Application Insights settings if telemetry is
-needed; this sample adds no separate Python telemetry exporter.
-
-For Entra telemetry, set `APPLICATIONINSIGHTS_AUTHENTICATION_STRING=Authorization=AAD`,
-grant the app principal Monitoring Metrics Publisher, and set
-`ConnectorNamespace__credential=managedidentity` for the worker's identity-only
-section. Omit it locally for developer credentials. The .NET worker's exporter
-factory has no Python equivalent here. See the
-[Flex identity/storage reference](https://github.com/Azure-Samples/azure-functions-flex-consumption-samples/blob/main/IaC/bicep/main.bicep).
+Generate each configured source event and check for a successful invocation and matching receipt log. Delivery may repeat. Remove only trigger configs created for this sample; do not delete shared resources or commit callback keys or local settings.

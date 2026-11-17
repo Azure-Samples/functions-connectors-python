@@ -1,11 +1,7 @@
-param(
-    [switch] $ForceLocalSettings,
-    [switch] $ConsentLinkOnly
-)
+param([switch] $ForceLocalSettings)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-settings.ps1')
-$setupArguments = @()
+$setupArguments = @('--local-settings-only')
 if ($ForceLocalSettings) { $setupArguments += '--force-local-settings' }
-if ($ConsentLinkOnly) { $setupArguments += '--consent-link-only' }
 Invoke-Office365Setup -SetupArguments $setupArguments

@@ -3,7 +3,7 @@ param connectionName string
 
 @minLength(1)
 @description('OneDrive connector folder identifier, not a display path. Passed unchanged to the connector.')
-param folderId string = 'root'
+param folderId string
 
 var triggers = [
   {

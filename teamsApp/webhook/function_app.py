@@ -4,6 +4,7 @@
 """Receive Teams events without logging message or membership contents."""
 
 import logging
+from typing import List
 
 import azure.functions as func
 import azurefunctions.extensions.connectors.teams as teams
@@ -13,28 +14,28 @@ app = func.FunctionApp()
 
 @app.function_name(name="OnNewChannelMessage")
 @app.connector_trigger(arg_name="messages")
-def on_new_channel_message(messages: list[teams.ChatMessage]) -> None:
+def on_new_channel_message(messages: List[teams.ChatMessage]) -> None:
     """Receive new channel messages."""
     logging.info("Received OnNewChannelMessage trigger (%s items)", len(messages))
 
 
 @app.function_name(name="OnNewChannelMessageMentioningMe")
 @app.connector_trigger(arg_name="messages")
-def on_new_channel_message_mentioning_me(messages: list[teams.ChatMessage]) -> None:
+def on_new_channel_message_mentioning_me(messages: List[teams.ChatMessage]) -> None:
     """Receive channel messages that mention the connected user."""
     logging.info("Received OnNewChannelMessageMentioningMe trigger (%s items)", len(messages))
 
 
 @app.function_name(name="OnGroupMembershipAdd")
 @app.connector_trigger(arg_name="members")
-def on_group_membership_add(members: list[teams.OnGroupMemberChangeResponse]) -> None:
+def on_group_membership_add(members: List[teams.OnGroupMemberChangeResponse]) -> None:
     """Receive team membership additions."""
     logging.info("Received OnGroupMembershipAdd trigger (%s items)", len(members))
 
 
 @app.function_name(name="OnGroupMembershipRemoval")
 @app.connector_trigger(arg_name="members")
-def on_group_membership_removal(members: list[teams.OnGroupMemberChangeResponse]) -> None:
+def on_group_membership_removal(members: List[teams.OnGroupMemberChangeResponse]) -> None:
     """Receive team membership removals."""
     logging.info("Received OnGroupMembershipRemoval trigger (%s items)", len(members))
 

@@ -1,18 +1,67 @@
 name: azure-functions-dataverse-polling-python
 metadata:
   template: azure-functions-dataverse-polling-python@0.0.1-alpha
+requiredVersions:
+  azd: ">= 1.33.0"
+services:
+  function-app:
+    project: .
+    language: python
+    host: function
+infra:
+  layers:
+    - name: base
+      path: infra
+      module: main
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn:
+        - base
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/authorize-connection.ps1
+            interactive: true
+          posix:
+            shell: sh
+            run: bash ./scripts/authorize-connection.sh
+            interactive: true
+          continueOnError: false
+    - name: app
+      path: infra
+      module: app
+      dependsOn:
+        - triggers
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/app-preprovision.ps1
+            interactive: true
+          posix:
+            shell: sh
+            run: bash ./scripts/app-preprovision.sh
+            interactive: true
+          continueOnError: false
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision base
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
 hooks:
   preprovision:
     shell: pwsh
     run: ./infra/scripts/validate-events.ps1
     continueOnError: false
   postdeploy:
-    shell: pwsh
-    run: ./infra/scripts/postdeploy.ps1
-    interactive: true
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: sh
+      run: bash ./infra/scripts/postdeploy.sh
     continueOnError: false
-services:
-  function-app:
-    project: .
-    language: python
-    host: function

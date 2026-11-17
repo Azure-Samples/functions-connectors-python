@@ -1,18 +1,65 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 name: functions-connectors-python-onedrive-polling
+requiredVersions:
+  azd: ">= 1.33.0"
 services:
   function-app:
     host: function
     project: .
     language: python
+infra:
+  layers:
+    # Foundation resources, including the Connector Namespace and connection.
+    - name: base
+      path: infra
+      module: main
+    # Enabled Poll triggers, created after consent and folder selection.
+    # Layer hooks run from the layer path (infra).
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn:
+        - base
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/authorize-connection.ps1
+            interactive: true
+          posix:
+            shell: sh
+            run: bash ./scripts/authorize-connection.sh
+            interactive: true
+          continueOnError: false
+    - name: app
+      path: infra
+      module: app
+      dependsOn:
+        - triggers
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/prepare-app.ps1
+          posix:
+            shell: sh
+            run: sh ./scripts/prepare-app.sh
+          continueOnError: false
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision base
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
 hooks:
+  # Optional: writes local.settings.json for local runs.
   postdeploy:
     windows:
       shell: pwsh
       run: ./infra/scripts/postdeploy.ps1
     posix:
       shell: sh
-      run: ./infra/scripts/postdeploy.sh
-    interactive: true
+      run: bash ./infra/scripts/postdeploy.sh
     continueOnError: false

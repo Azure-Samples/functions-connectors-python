@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import logging
+from typing import List
 
 import azure.functions as func
 import azurefunctions.extensions.connectors.onedriveforbusiness as onedrive
@@ -25,7 +26,7 @@ def on_onedrive_updated_file_content(payload: str) -> None:
 
 @app.function_name(name="OnOneDriveNewFile")
 @app.connector_trigger(arg_name="files", connection="ConnectorNamespace")
-def on_onedrive_new_file(files: list[onedrive.BlobMetadata]) -> None:
+def on_onedrive_new_file(files: List[onedrive.BlobMetadata]) -> None:
     """Triggered when a new file is created in OneDrive for Business."""
     logging.info("OnOneDriveNewFile trigger received.")
 
@@ -37,7 +38,7 @@ def on_onedrive_new_file(files: list[onedrive.BlobMetadata]) -> None:
 
 @app.function_name(name="OnOneDriveUpdatedFile")
 @app.connector_trigger(arg_name="files", connection="ConnectorNamespace")
-def on_onedrive_updated_file(files: list[onedrive.BlobMetadata]) -> None:
+def on_onedrive_updated_file(files: List[onedrive.BlobMetadata]) -> None:
     """Triggered when a file is updated in OneDrive for Business."""
     logging.info("OnOneDriveUpdatedFile trigger received.")
 

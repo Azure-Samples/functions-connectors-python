@@ -1,8 +1,13 @@
 .azure/
 local.settings.json
 .venv/
+.python_packages/
 __pycache__/
 *.py[cod]
 infra/main.json
 .notification-details*.json
 .local-settings-*.json
+__azurite_db*
+__blobstorage__/
+__queuestorage__/
+.azurite*
