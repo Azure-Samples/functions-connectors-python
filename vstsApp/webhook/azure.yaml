@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://aka.ms/azure-dev/azure.yaml.json
+name: azure-functions-vsts-python-webhook
+metadata:
+  template: azure-functions-vsts-python-webhook@0.0.1-alpha
+hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/preprovision.ps1
+      continueOnError: false
+    posix:
+      shell: sh
+      run: ./infra/scripts/preprovision.sh
+      continueOnError: false
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+      interactive: true
+      continueOnError: false
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+      interactive: true
+      continueOnError: false
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

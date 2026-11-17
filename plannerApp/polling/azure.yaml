@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://aka.ms/azure-dev/azure.yaml.json
+name: azure-functions-planner-python-polling
+metadata:
+  template: azure-functions-planner-python-polling@0.0.1-alpha
+requiredVersions:
+  azd: ">= 1.33.0"
+infra:
+  layers:
+    - name: base
+      path: infra
+      module: main
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn: [base]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/prepare-sources.ps1
+            interactive: true
+          posix:
+            shell: sh
+            run: sh ./scripts/prepare-sources.sh
+            interactive: true
+    - name: app
+      path: infra
+      module: app
+      dependsOn: [triggers]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/detect-app.ps1
+          posix:
+            shell: sh
+            run: sh ./scripts/detect-app.sh
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision base
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
+hooks:
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+    posix:
+      shell: sh
+      run: ./infra/scripts/postdeploy.sh
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

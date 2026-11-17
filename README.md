@@ -45,6 +45,9 @@ The included deployment templates use Python 3.14 on Flex Consumption.
 | [Azure Blob](./azureblobApp/README.md) | [Azure Blob Storage](https://learn.microsoft.com/connectors/azureblob/) |
 | [Generic](./genericApp/README.md) | [Any connector](https://learn.microsoft.com/connectors/), using raw string payloads |
 | [Kusto](./kustoApp/README.md) | [Azure Data Explorer](https://learn.microsoft.com/connectors/kusto/) |
+| [Azure DevOps](./vstsApp/README.md) | [Azure DevOps (Entra OAuth)](https://learn.microsoft.com/connectors/visualstudioteamservices/) |
+| [Planner](./plannerApp/README.md) | [Microsoft Planner](https://learn.microsoft.com/connectors/planner/) |
+| [Salesforce](./salesforceApp/README.md) | [Salesforce](https://learn.microsoft.com/connectors/salesforce/) |
 
 ## More triggers and operations
 
@@ -57,11 +60,11 @@ See the [Operations to Azure Functions Signature Mapping](https://github.com/Azu
 | [`azure-functions`](https://pypi.org/project/azure-functions/) | `>=2.4.0` (Python 3.13+) | The Azure Functions Python SDK. |
 | [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | `>=1.0.0` | Connector trigger bindings. |
 
-Install requirements from the selected app's folder. Requirements install `azure-functions>=2.4.0` only on Python 3.13+; the generic raw-payload samples do not need the connector extension.
+Install requirements from the selected app's folder. Requirements select the Functions SDK for your Python version; the generic raw-payload samples do not need the connector extension.
 
 ### Python 3.12 and older supported versions
 
-On Python 3.12 and older supported Functions runtimes, install `azure-functions>=1.27.0b1` before installing the sample requirements, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in the deployed app. Requirements do not install this older SDK. It is the only beta version referenced because no stable 1.27.0 release exists. Deployment templates use Python 3.14.
+On Python 3.12 and older supported Functions runtimes, requirements select `azure-functions>=1.27.0b1`. Set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in the deployed app. This older SDK requires a beta minimum because no stable 1.27.0 release exists. Deployment templates use Python 3.14.
 
 ## Related repos
 

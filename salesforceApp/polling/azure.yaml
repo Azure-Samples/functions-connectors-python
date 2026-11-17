@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: azure-functions-salesforce-python-polling
+metadata:
+  template: azure-functions-salesforce-python-polling@0.0.1-alpha
+requiredVersions:
+  azd: ">= 1.33.0"
+infra:
+  layers:
+    - name: base
+      path: infra
+      module: main
+    - name: triggers
+      path: infra
+      module: triggers
+      dependsOn: [base]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/prepare-triggers.ps1
+            interactive: true
+            continueOnError: false
+          posix:
+            shell: sh
+            run: sh ./scripts/prepare-triggers.sh
+            interactive: true
+            continueOnError: false
+    - name: app
+      path: infra
+      module: app
+      dependsOn: [triggers]
+      hooks:
+        preprovision:
+          windows:
+            shell: pwsh
+            run: ./scripts/prepare-app.ps1
+            continueOnError: false
+          posix:
+            shell: sh
+            run: sh ./scripts/prepare-app.sh
+            continueOnError: false
+workflows:
+  up:
+    - azd: package --all
+    - azd: provision base
+    - azd: provision triggers
+    - azd: provision app
+    - azd: deploy --all
+hooks:
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./infra/scripts/postdeploy.ps1
+      continueOnError: false
+    posix:
+      shell: sh
+      run: sh ./infra/scripts/postdeploy.sh
+      continueOnError: false
+services:
+  function-app:
+    project: .
+    language: python
+    host: function

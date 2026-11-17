@@ -1,0 +1,33 @@
+[
+  { "functionName": "OnVstsBuildCompleted", "operationName": "OnBuildCompleted", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnVstsGitPullClosed", "operationName": "OnGitPullClosed", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnVstsGitPullCreated", "operationName": "OnGitPullCreated", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnVstsGitPush", "operationName": "OnGitPush", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnVstsTfvcCheckIn", "operationName": "OnTfvcCheckIn", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnVstsWorkItemAssigned", "operationName": "OnWorkItemAssignedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "team", "value": "your-team-id" }, { "name": "wiql__System_AssignedTo", "value": "your-user-identity" }
+  ] },
+  { "functionName": "OnVstsWorkItemClosed", "operationName": "OnWorkItemClosedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnVstsWorkItemCreated", "operationName": "OnWorkItemCreatedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnVstsWorkItemUpdated", "operationName": "OnWorkItemUpdatedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] }
+]
