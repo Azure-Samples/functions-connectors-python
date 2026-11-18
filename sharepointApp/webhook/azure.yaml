@@ -20,4 +20,3 @@ hooks:
       run: bash ./infra/scripts/postdeploy.sh
       interactive: true
       continueOnError: false
-
