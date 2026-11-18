@@ -63,7 +63,7 @@ Follow the app's additional cleanup instructions for source subscriptions or man
 
 ## More triggers
 
-See [Operations to Azure Functions signature mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md) for all supported connector triggers and their Python signatures.
+See [Connector trigger payloads for Azure Functions](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md) for all supported connector triggers and their Python signatures.
 
 ## Packages
 
