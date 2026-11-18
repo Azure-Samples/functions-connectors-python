@@ -8,7 +8,7 @@ This folder is a standalone app. Run all commands from this folder; no parent or
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - Permission to deploy resources and assign roles.
-- PowerShell 7.3+ or Bash, jq 1.6+, and GNU coreutils for the deployment hook.
+- For the post-deploy hook: PowerShell 7.3+ on Windows, or Bash with jq 1.6+ on macOS and Linux.
 - A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 - `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
 
@@ -20,7 +20,6 @@ For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1
 az login
 azd auth login
 azd env new azureblob-webhook
-azd env set BLOB_CONTAINER_NAME connector-input
 azd up
 ```
 
