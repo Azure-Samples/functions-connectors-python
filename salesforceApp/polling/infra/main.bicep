@@ -80,7 +80,6 @@ module connector './connector-namespace.bicep' = {
     name: 'cns-${token}'
     location: connectorNamespaceLocation
     tags: tags
-    connectionName: 'cnsc-${token}'
     userPrincipalId: userPrincipalId
     authenticationParameterSetName: authenticationParameterSetName
   }

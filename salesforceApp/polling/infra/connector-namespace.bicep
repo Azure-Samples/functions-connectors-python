@@ -1,7 +1,6 @@
 param name string
 param location string
 param tags object = {}
-param connectionName string
 param userPrincipalId string
 @description('Pinned Node sample authentication selector. No credentials belong in Bicep.')
 param authenticationParameterSetName string = 'BasicAuthentication'
@@ -15,7 +14,7 @@ resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview'
 
 resource connection 'Microsoft.Web/connectorGateways/connections@2026-05-01-preview' = {
   parent: connectorNamespace
-  name: connectionName
+  name: 'salesforce-${uniqueString(connectorNamespace.id)}'
   location: location
   properties: union({ connectorName: 'salesforce' }, empty(authenticationParameterSetName) ? {} : {
     parameterValueSet: { name: authenticationParameterSetName, values: {} }
