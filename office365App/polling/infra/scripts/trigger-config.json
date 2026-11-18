@@ -1,0 +1,56 @@
+{
+  "connectorName": "office365",
+  "namePrefix": "office365",
+  "triggers": [
+    {
+      "functionName": "OnNewEmail",
+      "operationName": "OnNewEmailV3",
+      "environment": {
+        "folderPath": "OFFICE365_MAIL_FOLDER"
+      }
+    },
+    {
+      "functionName": "OnFlaggedEmail",
+      "operationName": "OnFlaggedEmailV4",
+      "environment": {
+        "folderPath": "OFFICE365_MAIL_FOLDER"
+      }
+    },
+    {
+      "functionName": "OnNewMentionMeEmail",
+      "operationName": "OnNewMentionMeEmailV3",
+      "environment": {
+        "folderPath": "OFFICE365_MAIL_FOLDER"
+      }
+    },
+    {
+      "functionName": "OnNewCalendarEvent",
+      "operationName": "CalendarGetOnNewItemsV3",
+      "environment": {
+        "table": "OFFICE365_CALENDAR_ID"
+      }
+    },
+    {
+      "functionName": "OnUpcomingEvent",
+      "operationName": "OnUpcomingEventsV3",
+      "environment": {
+        "table": "OFFICE365_CALENDAR_ID"
+      }
+    },
+    {
+      "functionName": "OnCalendarUpdatedItems",
+      "operationName": "CalendarGetOnUpdatedItemsV3",
+      "environment": {
+        "table": "OFFICE365_CALENDAR_ID"
+      }
+    },
+    {
+      "functionName": "OnSharedMailboxNewEmail",
+      "operationName": "SharedMailboxOnNewEmailV2",
+      "environment": {
+        "mailboxAddress": "OFFICE365_SHARED_MAILBOX_ADDRESS",
+        "folderId": "OFFICE365_SHARED_MAILBOX_FOLDER_ID"
+      }
+    }
+  ]
+}

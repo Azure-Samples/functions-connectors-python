@@ -22,11 +22,11 @@ infra:
         preprovision:
           windows:
             shell: pwsh
-            run: ./scripts/authorize-connection.ps1
+            run: ./scripts/configure-triggers.ps1 prepare
             interactive: true
           posix:
             shell: sh
-            run: bash ./scripts/authorize-connection.sh
+            run: sh ./scripts/configure-triggers.sh prepare
             interactive: true
           continueOnError: false
     - name: app
@@ -38,11 +38,11 @@ infra:
         preprovision:
           windows:
             shell: pwsh
-            run: ./scripts/app-preprovision.ps1
+            run: ./scripts/configure-triggers.ps1 verify
             interactive: true
           posix:
             shell: sh
-            run: bash ./scripts/app-preprovision.sh
+            run: sh ./scripts/configure-triggers.sh verify
             interactive: true
           continueOnError: false
 workflows:
@@ -60,8 +60,8 @@ hooks:
   postdeploy:
     windows:
       shell: pwsh
-      run: ./infra/scripts/postdeploy.ps1
+      run: ./infra/scripts/configure-triggers.ps1 finish
     posix:
       shell: sh
-      run: bash ./infra/scripts/postdeploy.sh
+      run: sh ./infra/scripts/configure-triggers.sh finish
     continueOnError: false

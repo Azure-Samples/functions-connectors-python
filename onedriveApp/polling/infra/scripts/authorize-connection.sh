@@ -72,5 +72,6 @@ if [[ "$currentStatus" != 'Connected' ]]; then
   fi
 fi
 
-"${PYTHON:-python}" "$SCRIPT_DIR/select_folder.py"
+python_cmd=${PYTHON:-$(command -v python3 || command -v python || echo python3)}
+"$python_cmd" "$SCRIPT_DIR/select_folder.py"
 echo 'Done. The OneDrive connection is authorized; the triggers layer will create the 4 enabled Poll triggers.'

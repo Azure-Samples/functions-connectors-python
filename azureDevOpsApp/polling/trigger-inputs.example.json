@@ -1,0 +1,33 @@
+[
+  { "functionName": "OnAzureDevOpsBuildCompleted", "operationName": "OnBuildCompleted", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnAzureDevOpsGitPullClosed", "operationName": "OnGitPullClosed", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnAzureDevOpsGitPullCreated", "operationName": "OnGitPullCreated", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnAzureDevOpsGitPush", "operationName": "OnGitPush", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "repository", "value": "your-repository-id" }
+  ] },
+  { "functionName": "OnAzureDevOpsTfvcCheckIn", "operationName": "OnTfvcCheckIn", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnAzureDevOpsWorkItemAssigned", "operationName": "OnWorkItemAssignedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" },
+    { "name": "team", "value": "your-team-id" }, { "name": "wiql__System_AssignedTo", "value": "your-user-identity" }
+  ] },
+  { "functionName": "OnAzureDevOpsWorkItemClosed", "operationName": "OnWorkItemClosedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnAzureDevOpsWorkItemCreated", "operationName": "OnWorkItemCreatedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] },
+  { "functionName": "OnAzureDevOpsWorkItemUpdated", "operationName": "OnWorkItemUpdatedV2", "parameters": [
+    { "name": "account", "value": "your-organization" }, { "name": "project", "value": "your-project" }
+  ] }
+]

@@ -2,11 +2,9 @@ targetScope = 'subscription'
 
 param resourceGroupName string
 param connectorNamespaceName string
-param connectorNamespaceConnectionName string
-@minLength(1)
-param teamsGroupId string
-@minLength(1)
-param teamsChannelId string
+// The preprovision hook completes consent, validates inputs and ownership, then saves this plan.
+// The empty default lets azd validate parameters before that hook runs.
+param triggerPlan string
 
 resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' existing = { name: resourceGroupName }
 
@@ -15,14 +13,11 @@ module pollTriggers './poll-triggers.bicep' = {
   name: 'poll-triggers'
   params: {
     namespaceName: connectorNamespaceName
-    connectionName: connectorNamespaceConnectionName
-    teamsGroupId: teamsGroupId
-    teamsChannelId: teamsChannelId
+    triggerPlan: triggerPlan
   }
 }
 
 output connectorPollingEndpoint string = pollTriggers.outputs.pollingEndpoint
-output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings
 output triggerConfigSettingsEncoded string = base64(string(pollTriggers.outputs.triggerConfigSettings))
-output teamsGroupId string = teamsGroupId
-output teamsChannelId string = teamsChannelId
+
+output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings

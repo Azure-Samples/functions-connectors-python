@@ -19,6 +19,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
+from trigger_inputs import collect_from_connection
+
 API_VERSION = "2026-05-01-preview"
 OPERATIONS = {"OnSalesforceNewItems": "GetOnNewItems", "OnSalesforceUpdatedItems": "GetOnUpdatedItems"}
 PARAMETERS = {"table", "$filter", "$orderby", "$select"}
@@ -215,22 +217,20 @@ def validate_inputs(triggers: object) -> list[dict]:
     return triggers
 
 
-def collect_inputs(path: Path) -> list[dict]:
-    """Read reviewed JSON or prompt for actual GetTables IDs and optional queries."""
+def collect_inputs(path: Path, outputs: dict | None = None) -> list[dict]:
+    """Read reviewed JSON or select objects using the authenticated connector."""
     if path.exists():
         return validate_inputs(read_json(path.read_text(encoding="utf-8")))
+    if outputs and outputs.get("POLLING_TRIGGER_INPUTS"):
+        return validate_inputs(read_json(base64.b64decode(outputs["POLLING_TRIGGER_INPUTS"], validate=True).decode("utf-8")))
     if not sys.stdin.isatty():
         raise ValueError("Provide trigger-inputs.json or rerun setup in an interactive terminal.")
-    triggers = []
-    for function, operation in OPERATIONS.items():
-        if input(f"Configure {function}? [y/N]: ").strip().lower() not in ("y", "yes"):
-            continue
-        parameters = [{"name": "table", "value": input("Actual Salesforce Object Type identifier (GetTables Name): ").strip()}]
-        for name in ("$filter", "$orderby", "$select"):
-            value = input(f"Optional {name} (blank omits): ").strip()
-            if value:
-                parameters.append({"name": name, "value": value})
-        triggers.append({"functionName": function, "operationName": operation, "parameters": parameters})
+    if outputs is None:
+        raise ValueError("Interactive Salesforce selection requires an authorized deployment context.")
+    root = context(outputs, require_hostname=False)
+    definitions = [{"functionName": function, "operationName": operation} for function, operation in OPERATIONS.items()]
+    triggers = collect_from_connection(outputs, "salesforce", definitions,
+                                       lambda method, url, body=None: rest(outputs, method, url, body), root)
     return validate_inputs(triggers)
 
 
@@ -389,8 +389,9 @@ def save_cloud_settings(outputs: dict, settings: dict[str, str]) -> None:
         cli("az", "functionapp", "config", "appsettings", "set", *arguments, "--settings", path, "-o", "none")
 
 
-def configure(outputs: dict, root: str, mode: str, triggers: list[dict], *, apply_cloud: bool = True) -> dict[str, str]:
-    """Check every known source before writes; disable only owned deselections."""
+def configure(outputs: dict, root: str, mode: str, triggers: list[dict], *, apply_cloud: bool = True,
+              plan: list[dict] | None = None) -> dict[str, str]:
+    """Check every known source before writes; disable only owned deselections; plan selected Poll sources."""
     validate_inputs(triggers)
     if mode not in ("polling", "webhook") or root != context(outputs, require_hostname=mode == "webhook"):
         raise ValueError("Setup mode or namespace differs from the deployment context.")
@@ -399,7 +400,9 @@ def configure(outputs: dict, root: str, mode: str, triggers: list[dict], *, appl
     existing = {function: owned(outputs, collection, function, mode, resources) for function in OPERATIONS}
     selected = {trigger["functionName"]: trigger for trigger in triggers}
     key = extension_key(outputs) if mode == "webhook" else None
-    settings, endpoint = {}, None
+    settings = {}
+    if mode == "polling" and plan is None:
+        raise ValueError("Poll setup requires a trigger plan for the Bicep triggers layer.")
     for function, operation in OPERATIONS.items():
         source = existing[function]
         properties = writable(source)
@@ -422,11 +425,12 @@ def configure(outputs: dict, root: str, mode: str, triggers: list[dict], *, appl
                           operationName=operation, parameters=selected[function]["parameters"], state="Enabled")
         if mode == "polling":
             properties["deliveryMode"] = "Poll"
-        else:
-            notification = properties.setdefault("notificationDetails", {})
-            notification.update(callbackUrl="https://" + outputs["functionAppDefaultHostname"]
-                                + "/runtime/webhooks/connector?functionName=" + function, httpMethod="Post",
-                                authentication={"type": "QueryString", "name": "code", "value": key})
+            plan.append({"name": name, "properties": properties})
+            continue
+        notification = properties.setdefault("notificationDetails", {})
+        notification.update(callbackUrl="https://" + outputs["functionAppDefaultHostname"]
+                            + "/runtime/webhooks/connector?functionName=" + function, httpMethod="Post",
+                            authentication={"type": "QueryString", "name": "code", "value": key})
         before = writable(source)
         if source:
             before["parameters"] = sorted(before["parameters"], key=lambda item: item["name"])
@@ -434,14 +438,9 @@ def configure(outputs: dict, root: str, mode: str, triggers: list[dict], *, appl
         compared["parameters"] = sorted(compared["parameters"], key=lambda item: item["name"])
         if before != compared or source["properties"].get("provisioningState") in ("Failed", "Canceled", "Cancelled"):
             rest(outputs, "put", collection + "/" + quote(name, safe=""), {"properties": properties})
-        registered = ready(outputs, collection, function, mode)
-        if mode == "polling":
-            current = polling_endpoint(registered["properties"]["pollingEndpoints"]["receiveUri"], name)
-            if endpoint and endpoint != current:
-                raise ValueError("Selected sources returned different polling gateways.")
-            endpoint = current
+        ready(outputs, collection, function, mode)
     if mode == "polling":
-        settings.update(ConnectorNamespace__credential="managedidentity", ConnectorNamespace__pollingEndpoint=endpoint)
+        settings["ConnectorNamespace__credential"] = "managedidentity"
     if apply_cloud:
         save_cloud_settings(outputs, settings)
     return settings
@@ -537,11 +536,14 @@ def main(argv: list[str] | None = None) -> None:
         if options.phase == "triggers" and options.mode != "polling":
             raise ValueError("Only Poll delivery has a pre-app triggers layer.")
         authorize(outputs, root)
-        triggers = collect_inputs(options.inputs or project / "trigger-inputs.json")
-        settings = configure(outputs, root, options.mode, triggers, apply_cloud=options.mode == "webhook")
+        triggers = collect_inputs(options.inputs or project / "trigger-inputs.json", outputs)
+        plan = [] if options.mode == "polling" else None
+        settings = configure(outputs, root, options.mode, triggers, apply_cloud=options.mode == "webhook", plan=plan)
         if options.mode == "polling":
-            encoded = base64.b64encode(json.dumps(settings).encode("utf-8")).decode("ascii")
-            cli("azd", "env", "set", "SALESFORCE_POLL_SETTINGS", encoded)
+            encoded = base64.b64encode(json.dumps({"selected": plan, "settings": settings}).encode("utf-8")).decode("ascii")
+            cli("azd", "env", "set", "POLLING_TRIGGER_PLAN", encoded)
+            cli("azd", "env", "set", "POLLING_TRIGGER_INPUTS",
+                base64.b64encode(json.dumps(triggers).encode("utf-8")).decode("ascii"))
             return
     changed = write_local_settings(project / "local.settings.json", settings, force=options.force)
     print("Salesforce setup complete. " + ("Created restricted local settings." if changed else "Existing local settings preserved."))

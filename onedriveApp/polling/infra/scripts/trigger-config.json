@@ -1,0 +1,34 @@
+{
+  "connectorName": "onedriveforbusiness",
+  "namePrefix": "onedrive",
+  "triggers": [
+    {
+      "functionName": "OnOneDriveNewFile",
+      "operationName": "OnNewFilesV2",
+      "environment": {
+        "folderId": "ONEDRIVE_FOLDER_ID"
+      }
+    },
+    {
+      "functionName": "OnOneDriveUpdatedFile",
+      "operationName": "OnUpdatedFilesV2",
+      "environment": {
+        "folderId": "ONEDRIVE_FOLDER_ID"
+      }
+    },
+    {
+      "functionName": "OnOneDriveNewFileContent",
+      "operationName": "OnNewFileV2",
+      "environment": {
+        "folderId": "ONEDRIVE_FOLDER_ID"
+      }
+    },
+    {
+      "functionName": "OnOneDriveUpdatedFileContent",
+      "operationName": "OnUpdatedFileV2",
+      "environment": {
+        "folderId": "ONEDRIVE_FOLDER_ID"
+      }
+    }
+  ]
+}

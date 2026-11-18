@@ -1,6 +1,6 @@
 # Microsoft Dataverse polling triggers (Python)
 
-The Functions host receives Dataverse events from the Connector Namespace polling endpoint. All handlers use raw `str` bindings and log only the trigger name. No public callback is required.
+The Functions host pulls Dataverse events from the Connector Namespace, so the app needs no public endpoint.
 
 | Function | Connector operation |
 | --- | --- |
@@ -10,21 +10,23 @@ The Functions host receives Dataverse events from the Connector Namespace pollin
 | `OnDataverseRowModified` | `SubscribeOnUpdatedItems` |
 | `OnDataverseRowDeleted` | `SubscribeOnDeletedItems` |
 
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Handlers log only the trigger name, not event content.
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- PowerShell 7.3+ on every platform, including when using the Bash wrapper.
-- A Dataverse organization and an account permitted to authorize the connection and register organization-scoped event subscriptions.
-- A supported Python version; the template deploys Python 3.14. The app preprovision hook also requires Python; set `PYTHON` to an interpreter path if needed. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+.
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+ with the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- Python and PowerShell 7.3+ (required by the deployment hooks on every platform).
+- A Dataverse organization and an account that can authorize the connection and register organization-scoped event subscriptions.
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+The app uses `azure-functions>=2.4.0` (Python 3.13+) and `azurefunctions-extensions-connectors>=1.0.0`; the template deploys Python 3.14. For older Python versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
-```powershell
+Set your Dataverse organization URL (not its friendly name), then run `azd up`:
+
+```bash
 az login
 azd auth login
 azd env new dataverse-polling
@@ -32,43 +34,58 @@ azd env set DATAVERSE_ENVIRONMENT_URL https://contoso.crm.dynamics.com
 azd up
 ```
 
-Authorize with an account that can register Dataverse events. After consent, choose the separate-row table and scope, and the action catalog, category, table, and action from the connector's returned options. The hook saves those choices in the selected azd environment. It creates all five Poll configs as enabled before provisioning the Function App with the polling endpoint and deploying the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings. The combined row trigger uses logical table `account` by default, `message=7`, and organization scope `4`.
+`azd up` asks you to:
 
-The action trigger needs an available cataloged business event. If the connector returns no choices, configure an event and check the account's permissions before rerunning `azd up`.
+1. Sign in to the Dataverse connection.
+2. Choose **Configure** or **Skip** for each trigger. Configure at least one. Configure the action trigger only if a cataloged business event exists and your account has the required permissions.
+3. For each configured trigger, pick inputs such as table and scope from the connector's lists, or type them where no list exists. Optional filters can be skipped.
 
-## Optional configuration
+Skipped functions are still deployed with their listeners disabled.
+
+Your choices are reused by later `azd up` runs, which also deploy code changes. To choose again, run `azd env set POLLING_TRIGGER_INPUTS ""`, then `azd up`. To retry after a failure, rerun `azd up`.
+
+To skip the prompts, create `trigger-inputs.json` in this folder: an array of `{ "functionName", "operationName", "parameters": [{ "name", "value" }] }` objects using connector parameter names. It takes precedence over saved choices.
+
+### Optional settings
+
+Set these with `azd env set` before `azd up` to prefill trigger inputs:
 
 | Setting | Purpose |
 | --- | --- |
-| `DATAVERSE_TABLE_NAME` | Logical table name for the combined trigger; defaults to `account`, not an entity-set name. |
-| `DATAVERSE_ENTITY_SET_NAME` | Separate-row Table Name selector returned by `GetTables`. |
-| `DATAVERSE_ROW_SCOPE` | Separate-row scope returned by `GetScopeFilters`; do not reuse combined-trigger `scope=4`. |
-| `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, `DATAVERSE_EVENT_ACTION` | Exact action selector values returned by the connector. |
+| `DATAVERSE_TABLE_NAME` | Logical table name (such as `account`) for `OnDataverseRowChanged`; defaults to `account`. |
+| `DATAVERSE_ENTITY_SET_NAME`, `DATAVERSE_ROW_SCOPE` | Table and scope for the separate row triggers, as returned by the connector's table and scope lists. |
+| `DATAVERSE_EVENT_CATALOG`, `DATAVERSE_EVENT_CATEGORY`, `DATAVERSE_EVENT_TABLE`, `DATAVERSE_EVENT_ACTION` | Action trigger selectors, as returned by the connector. |
 | `CONNECTOR_NAMESPACE_LOCATION`, `TELEMETRY_LOCATION` | Override the namespace or monitoring region. |
 
-Set the selector values before `azd up` to use them without prompts. The combined logical table and separate-row table are selected independently; choose matching tables if all row triggers should monitor the same table. The hook validates existing operations, selectors, connection, destination, and delivery mode before changes; legacy or mismatched configs require explicit cleanup or a fresh environment.
-
-### Action subscription cleanup
-
-The hook maintains an ignored `.azure/dataverse-action-cleanup-*.json` journal bound to the exact action registration. Before replacing an action or deleting resources, inspect Dataverse for its exact owned `callbackregistration`, verify its selectors and destination, remove only that registration, and confirm GET returns 404. Only after confirming cleanup, archive the matching journal outside this app before creating a replacement. Preserve the journal and unrelated registrations on failure. The scripts do not automatically delete Dataverse callbacks; resource group deletion alone does not prove source cleanup.
+The separate row triggers overlap `OnDataverseRowChanged` when they monitor the same table.
 
 ## Local development
 
-Start Azurite separately. After provisioning, run:
+1. Start Azurite.
+2. Create a virtual environment, install dependencies, and start the host:
 
-```powershell
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-az login
-azd hooks run postdeploy
-func start
+   ```bash
+   python -m venv .venv
+   # Activate .venv for your shell.
+   python -m pip install -r requirements.txt
+   az login
+   func start
+   ```
+
+`azd up` creates `local.settings.json` if it doesn't exist and leaves an existing file unchanged. To regenerate it after changing trigger choices, run `sh ./infra/scripts/configure-triggers.sh finish --force-local-settings` (or `./infra/scripts/configure-triggers.ps1 finish --force-local-settings` in PowerShell). Stop the deployed app while running locally to avoid competing listeners.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), check that the connection is **Connected** and the configured triggers are enabled with successful source registration.
+2. Create, modify, and delete a test row in the monitored table, then check the matching function logs.
+3. To test the action trigger, run the selected action on an authorized test record.
+
+## Deprovision
+
+Deleting Azure resources doesn't remove the action trigger's Dataverse event registration. Before `azd down`, or before replacing the action trigger, remove that `callbackregistration` in Dataverse (verify its selectors and destination first, and leave unrelated registrations alone). Then archive the matching `.azure/dataverse-action-cleanup-*.json` file outside this folder.
+
+```bash
+azd down --purge
 ```
 
-The hook creates local settings if absent and preserves existing files. After changing selections, use `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace them explicitly. Use developer credentials locally. Stop the deployed app or use separate configs to avoid competing listeners.
-
-## Verify and clean up
-
-Check Connected consent, enabled configs, and successful **source registration** in [Connector Namespaces](https://connectors.azure.com/). Create, modify, and delete a test row and check the corresponding row-trigger logs. Action delivery requires executing the selected action on an authorized test fixture.
-
-Complete the action source-cleanup steps above before running `azd down --purge` from this folder. Never commit credentials or local settings.
+Never commit credentials or `local.settings.json`.

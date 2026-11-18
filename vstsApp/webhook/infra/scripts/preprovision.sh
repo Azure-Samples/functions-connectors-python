@@ -1,4 +1,0 @@
-#!/bin/sh
-set -eu
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec python3 "$script_dir/setup.py" --mode webhook --project "$script_dir/../.." --phase prepare-app

@@ -11,3 +11,4 @@ __azurite_db*
 __blobstorage__/
 __queuestorage__/
 .azurite*
+trigger-inputs.json

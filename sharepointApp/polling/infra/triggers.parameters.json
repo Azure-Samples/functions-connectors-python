@@ -3,16 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "resourceGroupName": { "value": "${resourceGroupName}" },
-    "functionAppName": { "value": "${functionAppName}" },
     "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
-    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
-    "sharepointSiteUrl": { "value": "${SHAREPOINT_SITE_URL=selected-by-preprovision-hook}" },
-    "sharepointLibraryName": { "value": "${SHAREPOINT_LIBRARY_NAME=selected-by-preprovision-hook}" },
-    "sharepointListName": { "value": "${SHAREPOINT_LIST_NAME=}" },
-    "sharepointFolderPath": { "value": "${SHAREPOINT_FOLDER_PATH=}" },
-    "sharepointEnableDeletionTriggers": { "value": "${SHAREPOINT_ENABLE_DELETION_TRIGGERS=false}" },
-    "sharepointEnableSyntexTrigger": { "value": "${SHAREPOINT_ENABLE_SYNTEX_TRIGGER=false}" },
-    "sharepointFormId": { "value": "${SHAREPOINT_FORM_ID=}" },
-    "sharepointDigestSchedule": { "value": "${SHAREPOINT_DIGEST_SCHEDULE=}" }
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }

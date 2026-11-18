@@ -1,6 +1,6 @@
 # OneDrive for Business polling triggers (Python)
 
-The Functions host receives OneDrive events from the Connector Namespace polling endpoint. Metadata handlers receive typed lists; content handlers receive raw `str` payloads. No public callback is required.
+The Functions host pulls OneDrive events from the Connector Namespace, so no public endpoint is required.
 
 | Function | Connector operation | Binding |
 | --- | --- | --- |
@@ -9,17 +9,16 @@ The Functions host receives OneDrive events from the Connector Namespace polling
 | `OnOneDriveNewFile` | [`OnNewFilesV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-created-(properties-only)) | `List[onedrive.BlobMetadata]` |
 | `OnOneDriveUpdatedFile` | [`OnUpdatedFilesV2`](https://learn.microsoft.com/connectors/onedriveforbusiness/#when-a-file-is-modified-(properties-only)) | `List[onedrive.BlobMetadata]` |
 
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Content handlers log only the trigger name, never file content. Metadata handlers log file names, paths, sizes, and modification times, so use test data and restrict log access.
 
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- A OneDrive for Business account and permission to authorize the connection.
-- PowerShell 7.3+ or Bash, jq 1.6+, and GNU coreutils for the hook. The preprovision hook also requires Python; set `PYTHON` to an interpreter path if needed.
-- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- Python (the deployed app uses Python 3.14). Deployment hooks also run on Python, with PowerShell on Windows or `sh` elsewhere.
+- A OneDrive for Business account with permission to authorize the connection.
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+Python 3.13+ uses `azure-functions>=2.4.0` and `azurefunctions-extensions-connectors>=1.0.0` from `requirements.txt`. For older versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
@@ -30,51 +29,46 @@ azd env new onedrive-polling
 azd up
 ```
 
-Authorize the new connection with the account that owns the folder, then select the folder interactively. The deployment creates enabled Poll triggers after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
+`azd up` asks you to:
 
-To skip the picker, set `ONEDRIVE_FOLDER_ID` to a connector-returned folder ID before running `azd up`. A folder name, path, or literal `root` is invalid. The connector can accept `root` at registration but fails trigger evaluation with `Invalid fileId`.
+1. Sign in to authorize the OneDrive connection.
+2. **Configure** or **Skip** each trigger. Configure at least one.
+3. Select the folder to monitor. All configured triggers use this folder.
 
-### Find a folder ID manually
+Skipped functions are still deployed with their listeners disabled.
 
-Use an existing authorized OneDrive connection. For the top-level folder, invoke `GetFileByPath`:
+Choices are reused by later `azd up` runs, which also deploy your code changes. To choose again, run `azd env set POLLING_TRIGGER_INPUTS ""`, then `azd up`. To retry after a failure, rerun `azd up`.
 
-```powershell
-az connector-namespace connection invoke `
-  --subscription "<connection subscription ID>" `
-  -g "<connection resource group>" --namespace "<namespace name>" `
-  --connection-name "<authorized OneDrive connection>" `
-  --request '{"method":"GET","path":"/datasets/default/GetFileByPath","queries":{"path":"/"}}' `
-  --query "response.body.Id" -o tsv
-```
+To skip the prompts, create `trigger-inputs.json` in this folder: an array of `{ "functionName", "operationName", "parameters": [{ "name", "value" }] }` objects using connector parameter names. It takes precedence over saved choices.
 
-For subfolders, list `/datasets/default/folders`, then `/datasets/default/folders/<URL-encoded returned folder ID>`. Use the returned `Id`.
-
-## Optional configuration
-
-| Setting or action | Purpose |
+| Optional setting | Purpose |
 | --- | --- |
-| `TELEMETRY_LOCATION` | Monitoring region; defaults to `eastus2`. |
-| `ONEDRIVE_FOLDER_ID` | Skip interactive folder selection with a connector-returned ID. |
-| `azd hooks run postdeploy` | Create local settings if absent. |
-| `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings` | Replace existing local settings. |
+| `ONEDRIVE_FOLDER_ID` | Connector-returned folder ID to use instead of browsing. A folder name, path, or literal `root` is invalid. |
 
 ## Local development
 
-Start Azurite separately. After provisioning, run:
+1. Start Azurite.
+2. Create and activate a virtual environment, then install dependencies:
+
+   ```bash
+   python -m venv .venv
+   python -m pip install -r requirements.txt
+   ```
+
+3. Run `az login`, then `func start`.
+
+`azd up` creates `local.settings.json` if it doesn't exist. To regenerate it, run `sh ./infra/scripts/configure-triggers.sh finish --force-local-settings` (or `./infra/scripts/configure-triggers.ps1 finish --force-local-settings` in PowerShell). Stop the deployed app while running locally so the two don't compete for events.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), confirm the connection is Connected and the selected trigger configurations are Enabled.
+2. Create, then modify, a test file smaller than 50 MB in the selected folder. Moving an existing file in doesn't count as a new file.
+3. Check the function logs for the selected functions.
+
+## Deprovision
 
 ```bash
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-az login
-azd hooks run postdeploy
-func start
+azd down --purge
 ```
 
-The hook writes the endpoint and trigger names to local settings if absent. Alternatively, copy `local.settings.example.json` and replace the endpoint with the `connectorPollingEndpoint` output. Use developer credentials locally. Stop the deployed app or use separate trigger configs to avoid competing listeners.
-
-## Verify and clean up
-
-Check that the connection is Connected and all four Poll configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions. Moving an existing file is not a new-file event. Metadata handlers log file properties; use test data and restrict log access.
-
-Run `azd down --purge` from this folder when finished. Never commit credentials or local settings.
+Never commit credentials or `local.settings.json`.

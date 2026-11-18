@@ -1,0 +1,57 @@
+{
+  "connectorName": "commondataservice",
+  "namePrefix": "dataverse",
+  "triggers": [
+    {
+      "functionName": "OnDataverseRowChanged",
+      "operationName": "SubscribeWebhookTrigger",
+      "environment": {
+        "organization": "DATAVERSE_ENVIRONMENT_URL",
+        "dataset": "DATAVERSE_ENVIRONMENT_URL",
+        "body/entityname": "DATAVERSE_TABLE_NAME"
+      }
+    },
+    {
+      "functionName": "OnDataverseActionPerformed",
+      "operationName": "BusinessEventsTrigger",
+      "environment": {
+        "organization": "DATAVERSE_ENVIRONMENT_URL",
+        "dataset": "DATAVERSE_ENVIRONMENT_URL",
+        "catalog": "DATAVERSE_EVENT_CATALOG",
+        "category": "DATAVERSE_EVENT_CATEGORY",
+        "body/entityname": "DATAVERSE_EVENT_TABLE",
+        "body/sdkmessagename": "DATAVERSE_EVENT_ACTION"
+      }
+    },
+    {
+      "functionName": "OnDataverseRowAdded",
+      "operationName": "SubscribeOnNewItems",
+      "environment": {
+        "organization": "DATAVERSE_ENVIRONMENT_URL",
+        "dataset": "DATAVERSE_ENVIRONMENT_URL",
+        "table": "DATAVERSE_ENTITY_SET_NAME",
+        "scope": "DATAVERSE_ROW_SCOPE"
+      }
+    },
+    {
+      "functionName": "OnDataverseRowModified",
+      "operationName": "SubscribeOnUpdatedItems",
+      "environment": {
+        "organization": "DATAVERSE_ENVIRONMENT_URL",
+        "dataset": "DATAVERSE_ENVIRONMENT_URL",
+        "table": "DATAVERSE_ENTITY_SET_NAME",
+        "scope": "DATAVERSE_ROW_SCOPE"
+      }
+    },
+    {
+      "functionName": "OnDataverseRowDeleted",
+      "operationName": "SubscribeOnDeletedItems",
+      "environment": {
+        "organization": "DATAVERSE_ENVIRONMENT_URL",
+        "dataset": "DATAVERSE_ENVIRONMENT_URL",
+        "table": "DATAVERSE_ENTITY_SET_NAME",
+        "scope": "DATAVERSE_ROW_SCOPE"
+      }
+    }
+  ]
+}

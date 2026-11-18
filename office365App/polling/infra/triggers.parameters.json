@@ -4,10 +4,6 @@
   "parameters": {
     "resourceGroupName": { "value": "${resourceGroupName}" },
     "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
-    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
-    "mailFolderPath": { "value": "${OFFICE365_MAIL_FOLDER=selected-by-preprovision-hook}" },
-    "calendarId": { "value": "${OFFICE365_CALENDAR_ID=selected-by-preprovision-hook}" },
-    "sharedMailboxAddress": { "value": "${OFFICE365_SHARED_MAILBOX_ADDRESS=}" },
-    "sharedMailboxFolderId": { "value": "${OFFICE365_SHARED_MAILBOX_FOLDER_ID=Inbox}" }
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }

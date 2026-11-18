@@ -1,82 +1,85 @@
 # Office 365 Outlook webhook triggers (Python)
 
-Connector Namespace sends events to the Functions connector callback, authenticated with the `connector_extension` system key. Six personal-mailbox/calendar sources are enabled by default; shared-mailbox email is opt-in.
+The Connector Namespace calls the deployed function's connector callback when mail and calendar events occur. Six personal mailbox and calendar triggers are enabled by default; the shared-mailbox trigger is opt-in.
 
-| Function | Connector operation | Binding |
-| --- | --- | --- |
-| `OnNewEmail` | [`OnNewEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` |
-| `OnFlaggedEmail` | [`OnFlaggedEmailV4`](https://learn.microsoft.com/connectors/office365/#when-an-email-is-flagged-(v4)-(preview)) | `List[office365.GraphClientReceiveMessage]` |
-| `OnNewMentionMeEmail` | [`OnNewMentionMeEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-mentioning-me-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` |
-| `OnNewCalendarEvent` | [`CalendarGetOnNewItemsV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-event-is-created-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
-| `OnUpcomingEvent` | [`OnUpcomingEventsV3`](https://learn.microsoft.com/connectors/office365/#when-an-upcoming-event-is-starting-soon-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
-| `OnCalendarUpdatedItems` | [`CalendarGetOnUpdatedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-modified-(v3)) | `List[office365.GraphCalendarEventClientReceive]` |
-| `OnSharedMailboxNewEmail` | [`SharedMailboxOnNewEmailV2`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-in-a-shared-mailbox-(v2)) | `List[office365.GraphClientReceiveMessage]` |
+| Function | Connector operation | Binding | Selection |
+| --- | --- | --- | --- |
+| `OnNewEmail` | [`OnNewEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` | Default |
+| `OnFlaggedEmail` | [`OnFlaggedEmailV4`](https://learn.microsoft.com/connectors/office365/#when-an-email-is-flagged-(v4)-(preview)) | `List[office365.GraphClientReceiveMessage]` | Default |
+| `OnNewMentionMeEmail` | [`OnNewMentionMeEmailV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-mentioning-me-arrives-(v3)) | `List[office365.GraphClientReceiveMessage]` | Default |
+| `OnNewCalendarEvent` | [`CalendarGetOnNewItemsV3`](https://learn.microsoft.com/connectors/office365/#when-a-new-event-is-created-(v3)) | `List[office365.GraphCalendarEventClientReceive]` | Default |
+| `OnUpcomingEvent` | [`OnUpcomingEventsV3`](https://learn.microsoft.com/connectors/office365/#when-an-upcoming-event-is-starting-soon-(v3)) | `List[office365.GraphCalendarEventClientReceive]` | Default |
+| `OnCalendarUpdatedItems` | [`CalendarGetOnUpdatedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-modified-(v3)) | `List[office365.GraphCalendarEventClientReceive]` | Default |
+| `OnSharedMailboxNewEmail` | [`SharedMailboxOnNewEmailV2`](https://learn.microsoft.com/connectors/office365/#when-a-new-email-arrives-in-a-shared-mailbox-(v2)) | `List[office365.GraphClientReceiveMessage]` | Opt-in |
 
 [`CalendarGetOnChangedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-added,-updated-or-deleted-(v3)) is excluded because its preview subscription fails with missing `TABLE`.
 
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Handlers log the function name and item count, not message or event content.
 
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- An Office 365 mailbox/calendar and an account permitted to authorize the connection and manage trigger configurations.
-- A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell or a POSIX shell.
-- For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- Python, used by the deployment hooks. Set `PYTHON` to an interpreter path if it isn't on `PATH`.
+- An Office 365 mailbox and calendar. The shared-mailbox trigger also needs full access to the shared mailbox.
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+The app deploys on Python 3.14. Locally, use Python 3.13 or newer; for 3.12 and older, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
-```bash
-az login
-azd auth login
-azd env new office365-webhook
-azd env set OFFICE365_MAIL_FOLDER Inbox
-azd env set OFFICE365_CALENDAR_ID '<actual connector calendar ID>'
-azd up
-```
+1. Have the ID of the calendar to monitor, as accepted by the [Office 365 Outlook connector](https://learn.microsoft.com/connectors/office365/#when-a-new-event-is-created-(v3)). This is required: the default `Calendar` is a placeholder, not a real ID.
+2. Create the environment, set the calendar ID, and deploy:
 
-Authorize with the mailbox account when prompted. The hook preserves existing consent and registers selected callbacks using the deployed app's connector extension system key.
+   ```bash
+   az login
+   azd auth login
+   azd env new office365-webhook
+   azd env set OFFICE365_CALENDAR_ID '<calendar ID>'
+   azd up
+   ```
 
-## Optional configuration
+3. When prompted, sign in with the mailbox account to authorize the Office 365 connection.
 
-| Setting or action | Purpose |
+Run `azd up` again to deploy code changes, apply setting changes, or retry after a failure.
+
+| Optional setting | Purpose |
 | --- | --- |
-| `OFFICE365_MAIL_FOLDER` | Personal email folder; defaults to `Inbox`. |
-| `OFFICE365_CALENDAR_ID` | Actual connector calendar ID; replace the `Calendar` placeholder. |
-| `OFFICE365_SHARED_MAILBOX_ADDRESS` | Enable shared-mailbox email; the account needs full mailbox access. Empty by default. |
-| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Shared mailbox folder; defaults to `Inbox`. |
-| `OFFICE365_ENABLE_TRIGGERS` | Set `false` to skip the consent wait; defaults to `true`. After consent, rerun the hook to register disabled sources. |
-| `CONNECTOR_NAMESPACE_LOCATION`, `APPLICATION_INSIGHTS_LOCATION` | Override the namespace or monitoring region. |
-| `azd hooks run postdeploy` | Rerun setup while preserving existing local settings. |
+| `OFFICE365_MAIL_FOLDER` | Personal mail folder. Defaults to `Inbox`. |
+| `OFFICE365_SHARED_MAILBOX_ADDRESS` | Enables the shared-mailbox trigger. |
+| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Shared mailbox folder. Defaults to `Inbox`. |
 
-Clearing the shared mailbox address disables its listener but does not disable or delete an existing shared webhook config; review and disable that config separately. Use `-ConsentLinkOnly` or `--consent-link-only` to obtain a consent link without writing settings or triggers, then rerun the hook after consent.
+Clearing the shared mailbox address disables its listener but not its trigger configuration; disable that in [Connector Namespaces](https://connectors.azure.com/).
 
 ## Local development
 
-- Start Azurite separately.
-- Use the generated local settings or copy `local.settings.example.json` to `local.settings.json` if absent:
+1. Run `azd up` first. It creates `local.settings.json` if absent (or copy `local.settings.example.json`). To regenerate it, run `sh ./infra/scripts/postdeploy.sh --force-local-settings` (or `./infra/scripts/postdeploy.ps1 -ForceLocalSettings` in PowerShell).
+2. Start Azurite.
+3. Install dependencies and start the host:
+
+   ```bash
+   python -m venv .venv
+   # Activate .venv for your shell.
+   python -m pip install -r requirements.txt
+   func start --enableAuth
+   ```
+
+Deployed callbacks target Azure, not localhost. To receive events locally:
+
+1. Expose port 7071 through a secure HTTPS tunnel. Keep `--enableAuth`: Core Tools skips key checks without it.
+2. Get the local `connector_extension` system key from Azurite's `azure-webjobs-secrets` container.
+3. Point the callbacks at your tunnel: `sh ./infra/scripts/postdeploy.sh --callback-base-url <https-origin> --connector-extension-key <local-key>` (or `-CallbackBaseUrl` and `-ConnectorExtensionKey` with `postdeploy.ps1`). Keep the key out of shell history and logs.
+4. Run `azd up` to restore the deployed callbacks when done.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), confirm the connection is Connected and the trigger configurations are enabled.
+2. Send, flag, or @mention yourself in an email, or create or update a calendar event.
+3. Check the function logs for `Received <FunctionName> trigger (<Count> items)`. Detection can be delayed, and events can be delivered more than once.
+
+## Deprovision
 
 ```bash
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-func start --enableAuth
+azd down --purge
 ```
 
-- To receive local events, expose port 7071 through a secure public HTTPS tunnel and obtain the **local** `connector_extension` system key from Azurite's `azure-webjobs-secrets`.
-- Core Tools bypasses key checks by default; enable authentication before exposing the host.
-
-- Register the tunnel origin and local key with `pwsh ./infra/scripts/postdeploy.ps1 -CallbackBaseUrl <https-origin> -ConnectorExtensionKey <local-key>` or `sh ./infra/scripts/postdeploy.sh --callback-base-url <https-origin> --connector-extension-key <local-key>`.
-- This replaces deployed callbacks; run `azd hooks run postdeploy` without overrides to restore them.
-- Keep keys out of shell history, transcripts, and logs.
-
-- The hook preserves existing local settings; use `-ForceLocalSettings` or `--force-local-settings` to replace them explicitly.
-- Match the shared listener's disabled setting to your selected sources.
-
-## Verify and clean up
-
-Check Connected consent and enabled configs in [Connector Namespaces](https://connectors.azure.com/). Generate the selected mail/calendar events and check `Received <FunctionName> trigger (<Count> items)` logs. Source detection can be delayed and delivery can repeat. The handlers log counts, not message content.
-
-Run `azd down --purge` from this folder when finished. Never commit callback keys, credentials, or local settings.
+Never commit callback keys, credentials, or `local.settings.json`.

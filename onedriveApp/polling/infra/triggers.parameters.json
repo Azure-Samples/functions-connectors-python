@@ -4,7 +4,6 @@
   "parameters": {
     "resourceGroupName": { "value": "${resourceGroupName}" },
     "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
-    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
-    "folderId": { "value": "${ONEDRIVE_FOLDER_ID=selected-by-preprovision-hook}" }
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }
