@@ -2,6 +2,9 @@
 
 Azure Functions sample app demonstrating the **Azure Data Explorer (Kusto)** connector triggers using Python.
 
+> [!CAUTION]
+> Query-result rows are logged in full and may contain sensitive data. Use test data and restrict access to logs.
+
 ## Prerequisites
 
 - [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)

@@ -11,6 +11,9 @@ The Functions host receives OneDrive events from the Connector Namespace polling
 
 This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
+> [!CAUTION]
+> Metadata handlers log file names, paths, sizes, and modification times. Use test data and restrict access to logs.
+
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
@@ -67,14 +70,13 @@ python -m venv .venv
 # Activate .venv for your shell.
 python -m pip install -r requirements.txt
 az login
-azd hooks run postdeploy
 func start
 ```
 
-The hook writes the endpoint and trigger names to local settings if absent. Alternatively, copy `local.settings.example.json` and replace the endpoint with the `connectorPollingEndpoint` output. Use developer credentials locally. Stop the deployed app or use separate trigger configs to avoid competing listeners.
+`azd up` runs the postdeploy hook, which writes the endpoint and trigger names to local settings if absent. Alternatively, copy `local.settings.example.json` and replace the endpoint with the `connectorPollingEndpoint` output. Use developer credentials locally. Stop the deployed app or use separate trigger configs to avoid competing listeners.
 
 ## Verify and clean up
 
-Check that the connection is Connected and all four Poll configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions. Moving an existing file is not a new-file event. Metadata handlers log file properties; use test data and restrict log access.
+Check that the connection is Connected and all four Poll configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions. Moving an existing file is not a new-file event.
 
 Run `azd down --purge` from this folder when finished. Never commit credentials or local settings.

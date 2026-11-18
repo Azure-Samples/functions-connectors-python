@@ -11,6 +11,9 @@ Connector Namespace sends OneDrive events to the Functions connector callback, a
 
 This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
 
+> [!CAUTION]
+> Metadata handlers log file names, paths, sizes, and modification times. Use test data and restrict access to logs.
+
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
@@ -61,6 +64,6 @@ func start --enableAuth
 
 ## Verify and clean up
 
-Check that the connection is Connected and all four configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions. Metadata handlers log file properties; use test data and restrict log access.
+Check that the connection is Connected and all four configs are Enabled in [Connector Namespaces](https://connectors.azure.com/). Create and modify a test file smaller than 50 MB in the selected folder, then check logs for all four functions.
 
 Run `azd down --purge` from this folder when finished. Never commit callback keys, credentials, or local settings.

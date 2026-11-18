@@ -59,11 +59,10 @@ python -m venv .venv
 # Activate .venv for your shell.
 python -m pip install -r requirements.txt
 az login
-azd hooks run postdeploy
 func start
 ```
 
-The hook creates local settings with the endpoint, trigger names, and listener flags if absent. To replace an existing file, run `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `sh ./infra/scripts/postdeploy.sh --force-local-settings`. Use developer credentials locally and update listener flags when changing the selected sources. Stop the deployed app or use separate configs to avoid competing listeners.
+`azd up` runs the postdeploy hook, which creates local settings with the endpoint, trigger names, and listener flags if absent. To replace an existing file, run `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `sh ./infra/scripts/postdeploy.sh --force-local-settings`. Use developer credentials locally and update listener flags when changing the selected sources. Stop the deployed app or use separate configs to avoid competing listeners.
 
 ## Verify and clean up
 
