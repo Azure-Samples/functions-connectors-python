@@ -1,51 +1,59 @@
 # Generic connector polling trigger (Python)
 
-`OnGenericConnectorEvent` receives a raw `str` payload from an existing Poll trigger config and logs only the trigger name. Poll delivery does not require a public callback.
+The Functions host pulls events from an existing Poll trigger config on the Connector Namespace. No public endpoint is required.
 
-This folder is a standalone Function App. Run all commands from this folder; no parent or sibling files are required. It does not provision Azure resources.
+| Function | Binding |
+| --- | --- |
+| `OnGenericConnectorEvent` | `str` (raw payload) |
+
+The handler logs only its name, not payload content. This app does not provision Azure resources.
 
 ## Prerequisites
 
-- A supported Python version, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), Azure CLI, and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
-- An existing Connector Namespace, authorized connection, and enabled Poll trigger config. Grant connection access to the receiving app and the developer running locally; the namespace already has access to its own connections. See the [Poll setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#poll-delivery).
-- An existing Python Function App with host and deployment storage for Azure deployment.
-- `azure-functions>=2.4.0` for Python 3.13+. For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK.
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
+- An existing Connector Namespace, authorized connection, and enabled Poll trigger config ([Poll setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#poll-delivery)), with connection access granted to the Function App identity and to you for local runs.
+- An existing Python Function App to deploy to (this sample does not create one), with a system-assigned identity and identity-based host storage.
+- Python SDK: `azure-functions>=2.4.0` on Python 3.13+; see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
-## Configure and deploy
+## Deploy to Azure
 
-Set these Function App settings before publishing:
+1. Set these Function App settings:
 
-| Setting | Value |
-| --- | --- |
-| `GenericTriggerConfigName` | Existing enabled Poll trigger config name. |
-| `ConnectorNamespace__pollingEndpoint` | Base endpoint derived from the service's `pollingEndpoints.receiveUri`. |
-| `ConnectorNamespace__credential` | `managedidentity` for the deployed app. |
+   | Setting | Value |
+   | --- | --- |
+   | `GenericTriggerConfigName` | Poll trigger config name. |
+   | `ConnectorNamespace__pollingEndpoint` | Base of the config's `pollingEndpoints.receiveUri` (see below). |
+   | `ConnectorNamespace__credential` | `managedidentity` |
 
-Enable the app's system-assigned identity and grant it connection access. Configure identity-based host storage with `AzureWebJobsStorage__credential=managedidentity` and the account's `__blobServiceUri`, `__queueServiceUri`, and `__tableServiceUri` settings. Grant Storage Blob Data Owner, Storage Queue Data Contributor, and Storage Table Data Contributor on the host account. For Flex deployment storage, use `SystemAssignedIdentity` and grant Storage Blob Data Contributor on the deployment container. Do not set `FUNCTIONS_WORKER_RUNTIME` on Flex.
+2. Publish:
 
-```bash
-az login
-func azure functionapp publish <function-app-name>
-```
+   ```sh
+   az login
+   func azure functionapp publish <function-app-name>
+   ```
 
-Keep the included Preview extension bundle in the deployed host configuration. Python 3.12 and older require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` in Azure and local settings.
+For the polling endpoint, remove `/triggerconfigs/<name>/receive` and the query string from the receive URI; keep any `/api/connectorGateways/<id>` prefix, otherwise strip a trailing `/api`.
 
 ## Local development
 
-Copy `local.settings.example.json` to `local.settings.json` if absent, then set the trigger name and polling endpoint. Remove `/triggerconfigs/<name>/receive` and the query from the service receive URI; retain any `/api/connectorGateways/<id>` prefix, or strip a final `/api` from the base. Omit deployed managed-identity credentials locally.
+1. Copy `local.settings.example.json` to `local.settings.json` and set `GenericTriggerConfigName` and `ConnectorNamespace__pollingEndpoint` (omit `ConnectorNamespace__credential` to use your `az login` identity).
+2. Start Azurite.
+3. Run:
 
-Start Azurite separately, then run:
+   ```sh
+   python -m venv .venv
+   . .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+   python -m pip install -r requirements.txt
+   az login
+   func start
+   ```
 
-```bash
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-az login
-func start
-```
+Stop the deployed app or use a separate trigger config; both hosts would compete for the same events.
 
-Use the developer account granted connection access. Stop the deployed app or use separate trigger configs to avoid competing listeners.
+## Test
 
-## Verify and clean up
+Generate a source event and look for `OnGenericConnectorEvent (generic API) trigger received.` in the function logs. Delivery may repeat.
 
-Generate a source event and check for a successful invocation and `OnGenericConnectorEvent (generic API) trigger received.` Delivery may repeat. Remove only trigger configs created for this sample; do not delete shared resources or commit private settings.
+## Deprovision
+
+Remove only trigger configs you created for this sample. Never commit `local.settings.json`.

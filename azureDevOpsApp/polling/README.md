@@ -1,37 +1,32 @@
-# Azure DevOps polling triggers
+# Azure DevOps polling triggers (Python)
 
-Copy this directory on its own. It contains all infrastructure, hooks, ignore rules and the standard-library helper [infra/scripts/setup.py](infra/scripts/setup.py). Connector Namespace queues source events; the app receives and acknowledges them through **Poll delivery**, without a callback URL.
+The Functions host pulls Azure DevOps events from the Connector Namespace polling endpoint. No public endpoint is required.
 
-| Function | Connector operation | Event |
-|---|---|---|
-| `OnAzureDevOpsBuildCompleted` | `OnBuildCompleted` | Build completed |
-| `OnAzureDevOpsGitPullClosed` | `OnGitPullClosed` | Pull request closed |
-| `OnAzureDevOpsGitPullCreated` | `OnGitPullCreated` | Pull request created |
-| `OnAzureDevOpsGitPush` | `OnGitPush` | Git push |
-| `OnAzureDevOpsTfvcCheckIn` | `OnTfvcCheckIn` | TFVC check-in |
-| `OnAzureDevOpsWorkItemAssigned` | `OnWorkItemAssignedV2` | Work item assigned |
-| `OnAzureDevOpsWorkItemClosed` | `OnWorkItemClosedV2` | Work item closed |
-| `OnAzureDevOpsWorkItemCreated` | `OnWorkItemCreatedV2` | Work item created |
-| `OnAzureDevOpsWorkItemUpdated` | `OnWorkItemUpdatedV2` | Work item updated |
+| Function / connector operation | Binding |
+| --- | --- |
+| `OnAzureDevOpsBuildCompleted` / [`OnBuildCompleted`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-build-completes) | `List[devops.BuildResult]` |
+| `OnAzureDevOpsGitPullClosed` / [`OnGitPullClosed`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-pull-request-is-closed-(git)) | `List[devops.GitPullRequest]` |
+| `OnAzureDevOpsGitPullCreated` / [`OnGitPullCreated`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-pull-request-is-created-(git)) | `List[devops.GitPullRequest]` |
+| `OnAzureDevOpsGitPush` / [`OnGitPush`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-code-is-pushed-(git)) | `List[devops.GitPush]` |
+| `OnAzureDevOpsTfvcCheckIn` / [`OnTfvcCheckIn`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-code-is-checked-in-(tfvc)) | `List[devops.TfvcChangeset]` |
+| `OnAzureDevOpsWorkItemAssigned` / [`OnWorkItemAssignedV2`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-work-item-is-assigned) | `List[devops.TriggerWorkItemResponse]` |
+| `OnAzureDevOpsWorkItemClosed` / [`OnWorkItemClosedV2`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-work-item-is-closed) | `List[devops.TriggerWorkItemResponse]` |
+| `OnAzureDevOpsWorkItemCreated` / [`OnWorkItemCreatedV2`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-work-item-is-created) | `List[devops.TriggerWorkItemResponse]` |
+| `OnAzureDevOpsWorkItemUpdated` / [`OnWorkItemUpdatedV2`](https://learn.microsoft.com/connectors/visualstudioteamservices/#when-a-work-item-is-updated) | `List[devops.TriggerWorkItemResponse]` |
 
-## Runtime and dependencies
+Handlers log event names and item counts, not content.
 
-The nine handlers in [function_app.py](function_app.py) import `List` from `typing` and rich types from `azurefunctions.extensions.connectors.visualstudioteamservices`. They use `List[devops.BuildResult]`, `List[devops.GitPullRequest]`, `List[devops.GitPush]`, `List[devops.TfvcChangeset]` or `List[devops.TriggerWorkItemResponse]`. They log only event names and counts and return `None`; never log fields or return payloads.
+## Prerequisites
 
-Create and activate a virtual environment and install [requirements.txt](requirements.txt). It selects `azure-functions>=1.27.0b1` below Python 3.13 and `azure-functions>=2.4.0` for Python 3.13+. Use pip's `--pre` option if needed for the older-runtime prerelease. The only connector requirement is `azurefunctions-extensions-connectors>=1.0.0`; its dependency supplies the SDK, so no direct `azure-connectors` requirement is needed. Local Values require `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`, as the example and generator provide. Add it to existing settings or request a force refresh.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- Python for the deployment hooks, plus PowerShell 7 on Windows.
+- Azure permission to create resources and role assignments, such as Owner, or Contributor plus Role Based Access Control Administrator.
+- An Azure DevOps account in the organization's home tenant, with project access and permission to manage [service hooks](https://learn.microsoft.com/azure/devops/service-hooks/overview?view=azure-devops#permissions). The organization's tenant policy must allow consent to the connector's Entra application.
+- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-Cloud infrastructure uses Python 3.14 Flex Consumption. [host.json](host.json) uses standard `Microsoft.Azure.Functions.ExtensionBundle` range `[4.41.2, 5.0.0)`, not the preview bundle. Verify installed wheels contain the Azure DevOps bindings; local source-based checks do not prove published-wheel contents.
+The app deploys on Python 3.14 and uses `azurefunctions-extensions-connectors>=1.0.0`. For older Python versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
-## Permissions and prerequisites
-
-- Install Python, Azure Functions Core Tools v4, Azurite, Azure CLI (Windows: MSI), native Azure Developer CLI **1.33.0 or later**, and the Azure CLI `connector-namespace` extension with `connection authenticate` support. Windows hooks use PowerShell and Python; POSIX hooks use `sh` and `python3`.
-- Sign in with `az login` and `azd auth login` and select the same subscription. The deployer needs resource creation and role-assignment write rights, such as Contributor plus Role Based Access Control Administrator at the target scope. Register Microsoft.Web, Microsoft.Storage, Microsoft.Insights and Microsoft.OperationalInsights if necessary.
-- The Azure DevOps organization must allow the connector's Entra application and consent under its tenant policy. Sign in with an account in the organization's home tenant; user connections only list organizations in that tenant. The account needs organization/project access and permission to create/manage service-hook subscriptions, plus read access to selected builds, Git repositories, TFVC and work items. Consent does not grant missing source permissions. Review the [connector reference](https://learn.microsoft.com/connectors/visualstudioteamservices/) and [service-hook permissions](https://learn.microsoft.com/azure/devops/service-hooks/overview?view=azure-devops#permissions).
-- Choose an app region supporting Python 3.14 Flex Consumption. Connector Namespace defaults to `brazilsouth`; change `CONNECTOR_NAMESPACE_LOCATION` only to a supported preview region exposing these operations.
-
-## Provision in order
-
-Run from this directory in an interactive terminal:
+## Deploy to Azure
 
 ```bash
 az login
@@ -40,49 +35,49 @@ azd env new azuredevops-polling
 azd up
 ```
 
-Use a new environment rather than reusing an old `vstsApp` deployment. Existing `OnVsts` trigger configurations are not migrated or disabled automatically; stop old apps and disable old triggers separately to avoid duplicate subscriptions.
+`azd up` then asks you to:
 
-[azure.yaml](azure.yaml) defines this order:
+1. Sign in to the Azure DevOps connection in the browser, if it isn't already connected.
+2. Choose **Configure** or **Skip** for each trigger. Configure at least one.
+3. For each configured trigger, pick the organization, project, and other inputs from live lists, or type them where no list exists. Optional filters can be skipped.
 
-1. **Foundation**: [infra/main.bicep](infra/main.bicep) creates the resource group, managed-identity storage, telemetry, Flex plan, Connector Namespace and deterministic EntraOAuth connection ending in `-entra`. It reserves the future Function App name but creates neither an app nor trigger configs.
-2. **Consent and validated selection**: the triggers layer's interactive preprovision hook checks the EntraOAuth connection and opens browser consent if needed. Choose **Configure** or **Skip** for each event; at least one must be configured. The helper uses live connector metadata and authenticated pickers for available organizations, projects, repositories, teams and members. Optional filters can be skipped. Inputs without a picker are entered manually and all selections are validated before source writes.
-3. **Enabled poll configs**: the helper preflights ownership, registers selected configs with `deliveryMode=Poll` and `state=Enabled`, waits for readiness, and obtains their service-issued receive URIs. Their origins and route prefixes must agree. Only after every registration succeeds does it export the nonsecret endpoint and encoded listener settings to azd.
-4. **App infrastructure**: the app layer's preprovision hook detects whether the app exists. [infra/app.bicep](infra/app.bicep) reads existing settings before the app module runs, then securely merges them with host settings, the validated polling endpoint, nine config-name settings and selected/deselected listener flags. It creates the Function App and its connection, storage and monitoring access. Poll registration needs no app.
-5. **Code deploy**: azd deploys the package after app provisioning. Postdeploy only writes local settings; it does not register Poll sources again.
+Skipped functions are still deployed, with their listeners disabled.
 
-No input file is required. An optional ignored mode-local file named `trigger-inputs.json` bypasses interactive selection, not consent or validation. To use it, copy [trigger-inputs.example.json](trigger-inputs.example.json), keep a nonempty subset and replace every placeholder. Each object has `functionName`, `operationName` and a `parameters` array of `{ "name": "wire-key", "value": "reviewed-string" }`. Do not enter tokens or secrets. Otherwise, selections are saved in the azd environment as `POLLING_TRIGGER_INPUTS` and reused on rerun.
+Choices are saved in the azd environment and reused by later `azd up` runs. To choose again, run `azd env set POLLING_TRIGGER_INPUTS ""`, then `azd up`.
 
-For an input file, `account` is an organization name, not a URL. Use exact wire keys such as `wiql__System_AssignedTo`, not Python-normalized names. Unknown keys, duplicates, unsupported schemas, missing required values and invalid enums, lengths or patterns stop setup before configuration writes.
+To skip prompts, copy [trigger-inputs.example.json](trigger-inputs.example.json) to `trigger-inputs.json` (ignored by git), keep only the triggers to configure, and replace every placeholder. Each entry is `{ "functionName", "operationName", "parameters": [{ "name", "value" }] }` using connector wire names; `account` is the organization name, not a URL. The file takes precedence over saved choices.
 
-## Ownership, settings and reruns
+`azd up` also deploys later code changes. To retry after a failure, rerun `azd up`.
 
-Before its first write, the helper reads the full trigger inventory through bounded same-collection HTTPS pagination, including empty pages. It preflights every matching event's full resource ID, operation, connection, delivery mode and app-owner metadata. Conflicts stop the entire plan. It disables only owned deselected configs, never unrelated sources, and never deletes configs. Updates retain writable recurrence and metadata fields and exclude read-only provisioning and endpoint fields. Unchanged sources need no PUT.
+| Optional setting | Purpose |
+| --- | --- |
+| `CONNECTOR_NAMESPACE_LOCATION` | Connector Namespace region (default `brazilsouth`). |
 
-Pending resources receive bounded retries; failed states or timeouts stop the next layer. Receive URIs must match `/api/connectorGateways/{id}/triggerconfigs/{name}/receive` or `/api/triggerconfigs/{name}/receive` with HTTPS DNS, no credentials, alternate port, query or fragment. Setup derives the prefix from the service response, never the ARM ID, and never invokes the receive URL.
+## Local development
 
-To choose again, remove the optional input file if present, clear the saved selection, and rerun the dependent layers:
+1. Start Azurite.
+2. Install dependencies:
+
+   ```bash
+   python -m venv .venv
+   # Activate .venv for your shell.
+   python -m pip install -r requirements.txt
+   ```
+
+3. Sign in with `az login`, then run `func start`.
+
+`azd up` creates `local.settings.json` if it doesn't exist. To regenerate it, run `sh ./infra/scripts/postdeploy.sh --force-local-settings` (or `./infra/scripts/postdeploy.ps1 -ForceLocalSettings`).
+
+Local and deployed listeners compete for the same events; stop the deployed app while testing locally.
+
+## Test
+
+Trigger a configured event, such as queuing a build, pushing a commit, or creating a work item. Confirm the trigger configurations are enabled in [Connector Namespaces](https://connectors.azure.com/) and check the function logs for the event name and count.
+
+## Deprovision
 
 ```bash
-azd env set POLLING_TRIGGER_INPUTS ""
-azd provision triggers
-azd provision app
-azd deploy --all
+azd down --purge
 ```
 
-Reprovision preserves unrelated app settings while replacing this sample's endpoint, config names and listener flags with validated values. Stop existing cloud/local consumers before changing a live selection if you need to avoid concurrent consumption or reconfiguration. A failed trigger run may leave some sources changed but prevents app provisioning from applying a partial plan. Correct the issue and rerun triggers before app provisioning; do not invoke the app layer alone after a failed trigger run.
-
-The developer and Function App receive connection policies; the namespace receives no self-access policy. The app and deployer receive Storage Blob Data Owner, Queue Data Contributor, Table Data Contributor and monitoring access. Host/package storage use managed identity, shared keys are disabled, `alwaysReady` is empty, and cloud settings omit `FUNCTIONS_WORKER_RUNTIME`.
-
-## Local testing and private files
-
-Postdeploy atomically creates the ignored local settings file from [local.settings.example.json](local.settings.example.json), preserving existing bytes by default. Refresh using [infra/scripts/postdeploy.ps1](infra/scripts/postdeploy.ps1) with `-ForceLocalSettings`, or [infra/scripts/postdeploy.sh](infra/scripts/postdeploy.sh) with `--force-local-settings`. Refresh retains unrelated Values, adds `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` and removes local managed-identity credentials. Sign in as the developer with connection access, keep Azurite running for `UseDevelopmentStorage=true`, install requirements and run `func start`.
-
-Temporary request directories and generated settings receive a protected current-user-token-only Windows ACL or owner-only POSIX permissions. Windows explicitly imports `ctypes.wintypes`, uses the token's SID and removes broad inherited grants. Permission failures stop setup. Request JSON uses private `@file` arguments. Temporary files are cleaned on success/failure; atomic replacement failure leaves old settings intact. Windows bypasses cmd.exe expansion. Ordinary CLI calls time out after 120 seconds; browser authentication after 660 seconds. Secrets and payloads never enter sample logs. Local ignore rules exclude settings, inputs and temporary artifacts as appropriate.
-
-Generate a selected event and check its name/count log. Cloud and local Poll listeners compete for the same queue; stop one while testing the other. Offline checks should pass actual `typing.List` handler annotations to `ConnectorConverter`, assert nested SDK fields, and check `None` results and count-only logs. Item contracts include single items, arrays and Connector Namespace `body.value` batches; raw Azure DevOps envelopes with `eventType` and `resource` need separate normalization. Empty batches log zero; malformed JSON and invalid arrays must fail conversion.
-
-## Cleanup and limits
-
-Deselection disables owned configs/listeners; it does not guarantee deletion of upstream Azure DevOps subscriptions. Review old connections and source subscriptions before `azd down`, especially when replacing legacy OAuth with the distinct `-entra` connection. No unowned resource is deleted.
-
-The nine-event inventory matches the TypeScript Azure DevOps sample; required inputs come from live connector metadata. Consent, live provisioning, bundle startup, event delivery and acknowledgement still need validation in a supported preview region. Offline checks do not establish end-to-end success.
+Service-hook subscriptions in Azure DevOps may remain; delete any you no longer need from the project's service hooks settings. Never commit credentials or local settings.

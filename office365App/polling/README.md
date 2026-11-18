@@ -1,6 +1,6 @@
 # Office 365 Outlook polling triggers (Python)
 
-The Functions host receives events from the Connector Namespace polling endpoint. Six personal-mailbox/calendar sources are enabled by default; shared-mailbox email is opt-in. No public callback is required.
+The Functions host pulls mail and calendar events from the Connector Namespace, so the app needs no public endpoint.
 
 | Function | Connector operation | Binding |
 | --- | --- | --- |
@@ -14,17 +14,16 @@ The Functions host receives events from the Connector Namespace polling endpoint
 
 [`CalendarGetOnChangedItemsV3`](https://learn.microsoft.com/connectors/office365/#when-an-event-is-added,-updated-or-deleted-(v3)) is excluded because its preview subscription fails with missing `TABLE`.
 
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Handlers log the function name and item count, not message or event content.
 
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) 1.33+, [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- An Office 365 mailbox/calendar and an account permitted to authorize the connection and manage trigger configurations.
-- A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell or a POSIX shell.
-- For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- Python, used by the deployment hooks. Set `PYTHON` to an interpreter path if it isn't on `PATH`.
+- An Office 365 mailbox and calendar. `OnSharedMailboxNewEmail` also needs full access to the shared mailbox.
+- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+The app deploys on Python 3.14. Locally, use Python 3.13 or newer; for 3.12 and older, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
@@ -35,37 +34,51 @@ azd env new office365-polling
 azd up
 ```
 
-Authorize with the mailbox account, then select a mail folder and calendar from the connector's choices. The hook preserves existing consent and saves the selections in the azd environment. It creates enabled Poll configs after consent, provisions the Function App using their polling endpoint, and deploys the code. Reruns preserve unrelated Function App settings while refreshing the sample-managed settings.
+`azd up` asks you to:
 
-## Optional configuration
+1. Sign in with the mailbox account to authorize the Office 365 connection.
+2. **Configure** or **Skip** each trigger. Configure at least one.
+3. For each configured trigger, pick its inputs, such as mail folder, calendar, or shared mailbox, from live lists, or type them where no list exists. Optional filters can be skipped.
 
-| Setting or action | Purpose |
+Skipped functions are still deployed with their listeners disabled.
+
+Choices are reused by later `azd up` runs. To choose again, run `azd env set POLLING_TRIGGER_INPUTS ""`, then `azd up`.
+
+To skip the prompts, create `trigger-inputs.json` in this folder: an array of `{ "functionName", "operationName", "parameters": [{ "name", "value" }] }` objects using connector parameter names.
+
+Run `azd up` again to deploy code changes or to retry after a failure.
+
+| Optional setting | Purpose |
 | --- | --- |
-| `OFFICE365_MAIL_FOLDER` | Skip the folder picker with `Inbox` or a connector-returned folder ID. |
-| `OFFICE365_CALENDAR_ID` | Skip the calendar picker with a connector-returned calendar ID. |
-| `OFFICE365_SHARED_MAILBOX_ADDRESS` | Enable shared-mailbox email; the account needs full mailbox access. Empty by default. |
-| `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Skip the shared-mailbox folder picker with a connector-returned folder ID. |
-| `CONNECTOR_NAMESPACE_LOCATION`, `APPLICATION_INSIGHTS_LOCATION` | Override the namespace or monitoring region. |
-| `azd hooks run postdeploy` | Rerun setup while preserving existing local settings. |
-
-After changing source parameters, run `azd up`. Clearing the shared mailbox address disables an existing sample-owned shared Poll config without deleting it. To inspect consent without writing settings or triggers, run `python ./infra/scripts/setup.py --mode polling --project . --consent-link-only` after provisioning the base layer.
+| `OFFICE365_MAIL_FOLDER`, `OFFICE365_CALENDAR_ID` | Folder and calendar IDs to use instead of picking them. |
+| `OFFICE365_SHARED_MAILBOX_ADDRESS`, `OFFICE365_SHARED_MAILBOX_FOLDER_ID` | Shared mailbox and folder to use instead of picking them. |
 
 ## Local development
 
-Start Azurite separately. After provisioning, run:
+1. Run `azd up` first. It creates `local.settings.json` if absent. To regenerate it, run `sh ./infra/scripts/configure-triggers.sh finish --force-local-settings` (or `./infra/scripts/configure-triggers.ps1` in PowerShell).
+2. Start Azurite.
+3. Install dependencies and start the host:
+
+   ```bash
+   python -m venv .venv
+   # Activate .venv for your shell.
+   python -m pip install -r requirements.txt
+   az login
+   func start
+   ```
+
+The local host and the deployed app compete for the same events; stop the deployed app while testing locally.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), confirm the connection is Connected and the trigger configurations are enabled.
+2. Send, flag, or @mention yourself in an email, or create or update a calendar event.
+3. Check the function logs for `Received <FunctionName> trigger (<Count> items)`. Detection can be delayed, and events can be delivered more than once.
+
+## Deprovision
 
 ```bash
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-az login
-func start
+azd down --purge
 ```
 
-`azd up` runs the postdeploy hook, which creates local settings with the endpoint, trigger names, and listener flags if absent. To replace an existing file, run `pwsh ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `sh ./infra/scripts/postdeploy.sh --force-local-settings`. Use developer credentials locally and update listener flags when changing the selected sources. Stop the deployed app or use separate configs to avoid competing listeners.
-
-## Verify and clean up
-
-Check Connected consent and enabled Poll configs in [Connector Namespaces](https://connectors.azure.com/). Generate the selected mail/calendar events and check `Received <FunctionName> trigger (<Count> items)` logs. Source detection can be delayed and delivery can repeat. The handlers log counts, not message content.
-
-Run `azd down --purge` from this folder when finished. Never commit credentials or local settings.
+Never commit credentials or `local.settings.json`.

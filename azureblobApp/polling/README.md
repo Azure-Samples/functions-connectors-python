@@ -1,22 +1,22 @@
 # Azure Blob Storage polling trigger (Python)
 
-`OnAzureBlobUpdatedFile` receives [`OnUpdatedFiles_V2`](https://learn.microsoft.com/connectors/azureblob/#when-a-blob-is-added-or-modified-(properties-only)-(v2)) events through Connector Namespace Poll delivery. The Functions host receives and acknowledges events through the namespace polling endpoint.
+The Functions host pulls events from the Connector Namespace, so the app needs no public endpoint.
 
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+| Function | Connector operation |
+| --- | --- |
+| `OnAzureBlobUpdatedFile` | [`OnUpdatedFiles_V2`](https://learn.microsoft.com/connectors/azureblob/#when-a-blob-is-added-or-modified-(properties-only)-(v2)) |
+
+The handler logs each blob's name, path, size, and modification time, plus the batch count, not blob content. Use test data and restrict log access.
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+ with the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- PowerShell 7.3+ on Windows, or Bash with jq 1.6+ on macOS and Linux.
 - Permission to deploy resources and assign roles.
-- For the post-deploy hook: PowerShell 7.3+ on Windows, or Bash with jq 1.6+ on macOS and Linux.
-- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
-
-> [!CAUTION]
-> The handlers log blob names, paths, sizes, and modification times. Use test data,
-> restrict log access, and run `azd down --purge` from the app folder when finished.
+The app uses `azure-functions>=2.4.0` (Python 3.13+) and `azurefunctions-extensions-connectors>=1.0.0`; the template deploys Python 3.14. For older Python versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
@@ -27,50 +27,42 @@ azd env new azureblob-polling
 azd up
 ```
 
-Deployment creates a Function App, host storage, monitoring, a separate monitored storage account and container, a Connector Namespace, and an enabled Poll trigger. The Blob connection uses the namespace's system-assigned managed identity with **Storage Blob Data Reader** on the monitored container; no OAuth consent is required.
+`azd up` creates the Function App, a separate storage account and container to monitor, and a Connector Namespace with the trigger enabled. The connection uses the namespace's managed identity, so there's no sign-in prompt. Later `azd up` runs also deploy code changes. To retry after a failure, rerun `azd up`.
 
-## Optional configuration
+### Optional settings
 
-| Setting or action | Purpose |
+| Setting | Purpose |
 | --- | --- |
 | `BLOB_CONTAINER_NAME` | Monitored container; defaults to `connector-input`. |
-| `APPLICATIONINSIGHTS_LOCATION` | Override the monitoring region if it is unavailable in the app region. |
-| `azd hooks run postdeploy` | Verify connection authentication and readiness and create local settings if absent. |
-| `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` or `bash ./infra/scripts/postdeploy.sh --force-local-settings` | Replace existing local settings rather than preserving them. |
-
-The hook waits up to five minutes for the connection to become **Ready** or **Connected**. Storage RBAC may take longer to propagate. If source polling reports authorization errors, verify the namespace identity's source role, allow propagation, and rerun the hook.
+| `CONNECTOR_NAMESPACE_LOCATION`, `APPLICATIONINSIGHTS_LOCATION` | Override the namespace or monitoring region. |
 
 ## Local development
 
-If the Function App is already deployed, stop it before running locally to avoid competing listeners.
-
-Run commands from `azureblobApp/polling`.
-
-1. Prepare `local.settings.json`. Use the file generated by a successful `azd up`; existing files are preserved. If it is missing, run `azd hooks run postdeploy`. Then sign in for local developer credentials:
-
-   ```bash
-   az login
-   ```
-
-2. Start Azurite in a separate terminal:
-
-   ```bash
-   azurite
-   ```
-
-3. Install dependencies and start the host:
+1. Start Azurite.
+2. Create a virtual environment, install dependencies, and start the host:
 
    ```bash
    python -m venv .venv
    # Activate .venv for your shell.
    python -m pip install -r requirements.txt
+   az login
    func start
    ```
 
-Local settings use developer credentials; do not copy cloud managed-identity settings locally. The Blob connection uses the namespace's managed identity.
+`azd up` creates `local.settings.json` if it doesn't exist and leaves an existing file unchanged. To regenerate it, run `bash ./infra/scripts/postdeploy.sh --force-local-settings` (or `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings`). Local runs use your developer credentials. Stop the deployed app while running locally to avoid competing listeners.
 
-## Verify and clean up
+## Test
 
-Check that the Azure Blob connection in your Connector Namespace is **Ready** or **Connected**, and that the polling trigger is **Enabled** in [Connector Namespaces](https://connectors.azure.com/). Upload and overwrite a test blob in the account and container shown in azd outputs. Allow time for detection and check function logs. Blob names and paths are logged; use test data and restrict log access.
+1. In [Connector Namespaces](https://connectors.azure.com/), check that the Azure Blob connection is **Ready** or **Connected** and the trigger is enabled.
+2. Upload or overwrite a test blob in the storage account and container shown in the `azd up` output.
+3. Allow time for detection, then check the function logs.
 
-Run `azd down --purge` from this folder to remove this environment's resources. Never commit credentials or local settings.
+If the trigger reports authorization errors, role assignments may still be propagating; wait a few minutes and rerun `azd up`.
+
+## Deprovision
+
+```bash
+azd down --purge
+```
+
+Never commit credentials or `local.settings.json`.
