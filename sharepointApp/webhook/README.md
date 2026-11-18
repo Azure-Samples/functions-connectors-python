@@ -1,6 +1,6 @@
 # SharePoint Online webhook triggers (Python)
 
-Connector Namespace sends SharePoint events to the Functions connector callback, authenticated with the `connector_extension` system key. Five standard events run by default; other events require explicit selection.
+The Connector Namespace sends SharePoint events to the deployed function app's connector callback. The five default events are always registered; the others are opt-in.
 
 | Function | Connector operation | Binding | Selection |
 | --- | --- | --- | --- |
@@ -15,19 +15,17 @@ Connector Namespace sends SharePoint events to the Functions connector callback,
 | `OnSharepointFileClassified` | [`GetOnUpdatedFileClassifiedTimes`](https://learn.microsoft.com/connectors/sharepointonline/#when-a-file-is-classified-by-a-microsoft-syntex-model) | `List[sharepoint.Item]` | Syntex |
 | `OnSharepointRecurringDigest` | [`GetOnRecurrenceDigest`](https://learn.microsoft.com/connectors/sharepointonline/#recurring-digest-of-updates-(preview)) | `List[sharepoint.Item]` | Digest |
 
-Handlers log counts, not customer data.
-
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Handlers log item counts, not customer data.
 
 ## Prerequisites
 
-- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- A SharePoint Online site and an account permitted to authorize access to the selected library/list and opt-in sources.
-- A supported Python version; the template deploys Python 3.14. Hooks also require Python; set `PYTHON` to an interpreter path if needed. Use PowerShell on Windows or Bash on POSIX.
-- For local runs, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+ and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
+- Python (the deployed app uses Python 3.14). Deployment hooks also run on Python (set `PYTHON` to an interpreter path if needed), with PowerShell on Windows or Bash elsewhere.
+- A SharePoint Online site and an account permitted to authorize access to the sources you select.
+- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+Python 3.13+ uses `azure-functions>=2.4.0` and `azurefunctions-extensions-connectors>=1.0.0` from `requirements.txt`. For older versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
@@ -39,44 +37,48 @@ azd env set SHAREPOINT_SITE_URL 'https://contoso.sharepoint.com/sites/test'
 azd up
 ```
 
-Replace the example URL with your site and authorize the connection when prompted. The hook registers selected callbacks using the deployed app's actual hostname and connector extension system key.
+Replace the example URL with your site, and sign in to authorize the connection when prompted. Later `azd up` runs deploy your code changes and apply setting changes. To retry after a failure, rerun `azd up`.
 
-## Optional configuration
+Use `azd env set` to change the source or enable opt-in events, then rerun `azd up`. Removing an opt-in disables its trigger configuration.
 
-| Setting | Purpose |
+| Optional setting | Purpose |
 | --- | --- |
 | `SHAREPOINT_LIBRARY_NAME` | Library name or GUID; defaults to `Documents`. |
-| `SHAREPOINT_LIST_NAME` | List/form table; defaults to the library when empty. |
-| `SHAREPOINT_FOLDER_PATH` | Optional folder filter for library events. |
-| `SHAREPOINT_ENABLE_DELETION_TRIGGERS` | Enable deletion events; requires a site collection administrator. |
-| `SHAREPOINT_FORM_ID` | Enable submissions from an existing form. |
-| `SHAREPOINT_ENABLE_SYNTEX_TRIGGER` | Enable classification events; requires a licensed Syntex model applied to the library. |
-| `SHAREPOINT_DIGEST_SCHEDULE` | Enable digest with `*` or `0`–`6`; includes `update=true` and `add=true`. |
+| `SHAREPOINT_LIST_NAME` | List for list and form events; defaults to the library. |
+| `SHAREPOINT_FOLDER_PATH` | Folder filter for library events. |
+| `SHAREPOINT_ENABLE_DELETION_TRIGGERS` | `true` enables deletion events. |
+| `SHAREPOINT_FORM_ID` | Enables submissions from an existing form. |
+| `SHAREPOINT_ENABLE_SYNTEX_TRIGGER` | `true` enables classification events. |
+| `SHAREPOINT_DIGEST_SCHEDULE` | Enables the digest; `*` or `0`–`6`. |
 
-Rerun `azd up` after changing source selection. The hook preserves existing consent, updates selected sources, and disables unselected sources rather than deleting them. Use `-ConsentLinkOnly` or `--consent-link-only` to obtain a consent link without writing settings or triggers, then rerun the hook after consent. Do not combine this option with `-LocalSettingsOnly` or `--local-settings-only`.
+Deletion triggers require the connection user to be a site collection administrator. The classification trigger requires a licensed Microsoft Syntex model applied to the library.
 
 ## Local development
 
-- Start Azurite separately.
-- The hook generates local settings if absent; use `-ForceLocalSettings` or `--force-local-settings` to replace existing settings.
-- To generate settings without resource writes or consent, use `-LocalSettingsOnly` or `--local-settings-only`.
+1. Start Azurite.
+2. Create and activate a virtual environment, then install dependencies:
+
+   ```bash
+   python -m venv .venv
+   python -m pip install -r requirements.txt
+   ```
+
+3. Run `func start --enableAuth`.
+
+`azd up` creates `local.settings.json` if it doesn't exist. To regenerate it without changing Azure resources, run `bash ./infra/scripts/postdeploy.sh --local-settings-only --force-local-settings` (or `./infra/scripts/postdeploy.ps1 -LocalSettingsOnly -ForceLocalSettings` in PowerShell).
+
+To receive events locally, expose the host through a secure HTTPS tunnel, then point the callbacks at it with `bash ./infra/scripts/postdeploy.sh --callback-base-url <https-origin> --connector-extension-key <local-key>` (or `-CallbackBaseUrl`/`-ConnectorExtensionKey` in PowerShell), using the local `connector_extension` system key. Core Tools skips key checks unless you pass `--enableAuth`. Run `azd up` again to restore the deployed callbacks, and keep keys out of shell history and logs.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), confirm the connection is Connected and the selected trigger configurations are Enabled.
+2. Create and modify files and list items in the selected sources. Exercise opt-in events only after meeting their prerequisites.
+3. Check the function logs for the function names and item counts.
+
+## Deprovision
 
 ```bash
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-func start --enableAuth
+azd down --purge
 ```
 
-- To receive local events, expose the host through a secure public HTTPS tunnel and obtain the local `connector_extension` system key.
-- Core Tools bypasses key checks by default; enable authentication before exposing the host.
-
-- Register the tunnel origin and local key with `pwsh ./infra/scripts/postdeploy.ps1 -CallbackBaseUrl <https-origin> -ConnectorExtensionKey <local-key>` or `bash ./infra/scripts/postdeploy.sh --callback-base-url <https-origin> --connector-extension-key <local-key>`.
-- This replaces deployed callbacks; run `azd hooks run postdeploy` without overrides to restore them.
-- Keep keys out of shell history, transcripts, and logs.
-
-## Verify and clean up
-
-Check Connected consent and enabled configs in [Connector Namespaces](https://connectors.azure.com/). Create and modify files and list items, then check the corresponding function-name and count logs. Verify optional events only after meeting their prerequisites.
-
-Run `azd down --purge` from this folder when finished. Never commit callback keys, credentials, or local settings.
+Never commit callback keys, credentials, or `local.settings.json`.

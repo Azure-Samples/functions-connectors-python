@@ -1,6 +1,6 @@
 # Microsoft Teams webhook triggers (Python)
 
-Connector Namespace sends Teams events to the Functions connector callback, authenticated with the `connector_extension` system key. Four typed events are enabled by default; seven raw-string events require opt-in.
+The Connector Namespace calls the deployed function's connector callback when Teams events occur. Four typed events are enabled by default; seven raw-string events are opt-in.
 
 | Function / connector operation | Binding | Selection |
 | --- | --- | --- |
@@ -16,19 +16,16 @@ Connector Namespace sends Teams events to the Functions connector callback, auth
 | [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available) | `str` | Opt-in |
 | [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `str` | Opt-in |
 
-Handlers log event names and typed counts, not customer content.
-
-This folder is a standalone app. Run all commands from this folder; no parent or sibling files are required.
+Handlers log event names and item counts, not content.
 
 ## Prerequisites
 
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
-- PowerShell 7.3+ on every platform, including when using the Bash wrapper.
-- A Teams account with access to the selected team/channel and permission to authorize the connection. Optional events may require additional scopes, licenses, and policies.
-- A supported Python version; the template deploys Python 3.14. For local runs, install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
-- `azure-functions>=2.4.0` for Python 3.13+ and `azurefunctions-extensions-connectors>=1.0.0`.
+- PowerShell 7.3+ (`pwsh`) on every platform, used by the deployment hooks.
+- A Teams account with access to the team and channel you want to monitor. Optional events may need extra scopes, licenses, or policies.
+- For local runs: Python, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
-For Python 3.12 and older supported versions, install `azure-functions>=1.27.0b1` before installing `requirements.txt`, which does not install the older SDK, and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1`; the template and local settings example include it.
+The app deploys on Python 3.14. Locally, use Python 3.13 or newer; for 3.12 and older, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure
 
@@ -39,11 +36,16 @@ azd env new teams-webhook
 azd up
 ```
 
-The hook authorizes the Teams connection and prompts for missing team/channel selections. Alternatively, set `TEAMS_GROUP_ID` to the group object ID and `TEAMS_CHANNEL_ID` to the URL-decoded channel ID before deployment. The hook registers callbacks using the deployed app's actual hostname and connector extension system key.
+`azd up` asks you to:
 
-## Optional configuration
+1. Sign in to authorize the Teams connection.
+2. Pick the team and channel, unless `TEAMS_GROUP_ID` (group object ID) and `TEAMS_CHANNEL_ID` (URL-decoded channel ID) are already set with `azd env set`.
 
-Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the namespace or monitoring region. To enable optional events, copy selected entries from `infra/additional-triggers.example.json` into `infra/additional-triggers.json` and replace placeholders with actual connector values:
+Run `azd up` again to deploy code changes or to retry after a failure.
+
+### Enable optional events
+
+Copy entries from `infra/additional-triggers.example.json` into `infra/additional-triggers.json`, replace the placeholders with connector values (keep parameter casing and JSON types), then run `azd up`.
 
 | Operation | Required parameters |
 | --- | --- |
@@ -53,26 +55,33 @@ Set `CONNECTOR_NAMESPACE_LOCATION` or `TELEMETRY_LOCATION` to override the names
 | [`WebhookMessageReactionTrigger`](https://learn.microsoft.com/connectors/teams/#when-someone-reacted-to-a-message-in-chat) | `reactionKey`, `frequency`, `runningPolicy`, `threadType`, and dynamic `requestBody`. |
 | [`RecordingTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-recording-is-available), [`TranscriptTrigger`](https://learn.microsoft.com/connectors/teams/#when-a-transcript-is-available) | `scopeType` and dynamic `body`; meeting policies and licenses apply. |
 
-Preserve operation/parameter casing and JSON types. Run `azd up` to apply the selection. Removing an entry does not delete its existing namespace config; explicitly disable or delete the sample-owned source subscription to stop collection. Existing local settings are preserved; use `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings` to replace them after changing selection.
+Removing an entry does not delete its trigger configuration; disable or delete it in [Connector Namespaces](https://connectors.azure.com/) to stop events.
 
 ## Local development
 
-- Start Azurite separately.
-- Use the generated local settings or copy `local.settings.example.json` to `local.settings.json` if absent:
+1. Run `azd up` first. It creates `local.settings.json` if absent (or copy `local.settings.example.json`). To regenerate it, run `pwsh -File ./infra/scripts/postdeploy.ps1 -ForceLocalSettings`.
+2. Start Azurite.
+3. Install dependencies and start the host:
+
+   ```powershell
+   python -m venv .venv
+   # Activate .venv for your shell.
+   python -m pip install -r requirements.txt
+   func start --enableAuth
+   ```
+
+Deployed callbacks target Azure, not localhost. To receive events locally, expose the host through a secure HTTPS tunnel and register your own trigger configurations with the local `connector_extension` system key. Keep `--enableAuth`: Core Tools skips key checks without it. Run `azd up` to restore the deployed callbacks.
+
+## Test
+
+1. In [Connector Namespaces](https://connectors.azure.com/), confirm the connection is Connected and the trigger configurations are enabled.
+2. Post a channel message, mention the connected user, or add and remove a test team member. Optional events need their own source actions.
+3. Check the function logs for invocations and item counts.
+
+## Deprovision
 
 ```powershell
-python -m venv .venv
-# Activate .venv for your shell.
-python -m pip install -r requirements.txt
-func start --enableAuth
+azd down --purge
 ```
 
-- To receive local events, expose the host through a secure public HTTPS tunnel and configure separate callbacks using the local function names and local `connector_extension` system key.
-- Core Tools bypasses key checks by default; enable authentication before exposing the host.
-- The hook targets Azure, not localhost; rerun it to restore deployed callbacks after manual changes.
-
-## Verify and clean up
-
-Check Connected consent, enabled configs, and successful source registration in [Connector Namespaces](https://connectors.azure.com/). Post a root channel message, mention the connection user, and add/remove a test team member. Check successful invocations and item counts; optional events require their selected source actions.
-
-Disable or remove only your test subscriptions, then run `azd down --purge` from this folder. Never commit callback keys, credentials, or local settings.
+Never commit callback keys, credentials, or `local.settings.json`.
