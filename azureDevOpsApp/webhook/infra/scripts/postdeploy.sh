@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec python3 "$script_dir/setup.py" --mode webhook --project "$script_dir/../.." "$@"
+python_cmd=${PYTHON:-$(command -v python3 || command -v python || echo python3)}
+exec "$python_cmd" "$script_dir/setup.py" --mode webhook --project "$script_dir/../.." "$@"
