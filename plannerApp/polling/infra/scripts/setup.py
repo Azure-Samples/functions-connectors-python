@@ -9,7 +9,6 @@ import argparse
 import base64
 import copy
 import csv
-import ipaddress
 import json
 import os
 import shutil
@@ -20,6 +19,8 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
+
+from trigger_inputs import collect_from_connection
 
 API_VERSION = "2026-05-01-preview"
 OPERATIONS = {
@@ -169,8 +170,8 @@ def validate_selection(items):
     return copy.deepcopy(items)
 
 
-def select_inputs(project, inputs=None, prompt=input):
-    """Use a local file, environment JSON or explicit prompts, without a fake picker."""
+def select_inputs(project, inputs=None, prompt=input, connector_setup=None):
+    """Use explicit inputs or authenticated connector pickers during deployment."""
     contract = json.loads((project / "infra/triggers.json").read_text(encoding="utf-8"))
     if contract != [{"functionName": name, "operationName": operation, "requiredParameters": list(keys)}
                     for name, (operation, keys) in OPERATIONS.items()]:
@@ -182,47 +183,33 @@ def select_inputs(project, inputs=None, prompt=input):
         raise ValueError("The requested trigger input file does not exist.")
     if os.environ.get("PLANNER_TRIGGER_INPUTS"):
         return validate_selection(json.loads(os.environ["PLANNER_TRIGGER_INPUTS"]))
-    selected = []
+    saved = connector_setup.outputs.get("POLLING_TRIGGER_INPUTS") if connector_setup else None
+    if saved:
+        return validate_selection(json.loads(base64.b64decode(saved, validate=True)))
+    if connector_setup is None:
+        raise ValueError("Interactive Planner selection requires an authorized deployment context.")
+    connector_setup.authorize()
+    definitions = []
     for function, (operation, keys) in OPERATIONS.items():
-        answer = prompt(f"Configure {function}? [y/N]: ").strip().casefold()
-        if answer not in ("", "n", "no", "y", "yes"):
-            raise ValueError("Answer yes or no; no sources have changed.")
-        if answer not in ("y", "yes"):
-            continue
-        parameters = []
+        values = {}
         for name in keys:
             setting = "PLANNER_GROUP_ID" if name == "groupId" else "PLANNER_PLAN_ID"
-            value = os.environ.get(setting) or prompt(f"Actual {name} (id means plan ID, not task ID): ").strip()
-            parameters.append({"name": name, "value": value})
-        selected.append({"functionName": function, "operationName": operation, "parameters": parameters})
+            value = os.environ.get(setting) or connector_setup.outputs.get(setting)
+            if value:
+                values[name] = value
+        definitions.append({"functionName": function, "operationName": operation, "values": values})
+
+    def request(method, url, body=None):
+        if "?" not in url:
+            url += "?api-version=" + API_VERSION
+        if body is None:
+            return connector_setup.rest(method, url)
+        with private_json(body) as path:
+            return connector_setup.az("rest", "--method", method, "--url", url, "--body", path, "-o", "json")
+
+    selected = collect_from_connection(connector_setup.outputs, "planner", definitions, request,
+                                       connector_setup.collection.rsplit("/triggerConfigs", 1)[0], prompt=prompt)
     return validate_selection(selected)
-
-
-def polling_endpoint(receive_uri, name):
-    """Accept only a service HTTPS receive URI for the expected trigger."""
-    if not isinstance(receive_uri, str):
-        raise ValueError("The service did not return a polling receive URI.")
-    parsed = urlsplit(receive_uri)
-    marker = "/triggerconfigs/"
-    path = unquote(parsed.path)
-    index = path.casefold().find(marker)
-    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or
-            parsed.fragment or parsed.port not in (None, 443) or index <= 0 or
-            path[index + len(marker):].casefold() != (name + "/receive").casefold() or
-            parsed.hostname.casefold() in {"localhost", "example.com", "example.invalid"}):
-        raise ValueError("Invalid service polling receive URI.")
-    try:
-        ipaddress.ip_address(parsed.hostname)
-    except ValueError:
-        pass
-    else:
-        raise ValueError("A service DNS hostname is required.")
-    prefix = parsed.path[:parsed.path.casefold().index(marker)]
-    if any(segment in {".", ".."} for segment in unquote(prefix).split("/")):
-        raise ValueError("Invalid polling gateway path.")
-    if prefix.casefold().endswith("/api"):
-        prefix = prefix[:-4]
-    return f"https://{parsed.netloc}{prefix}"
 
 
 class Setup:
@@ -322,7 +309,7 @@ class Setup:
             raise ValueError("App settings verification failed; output withheld.")
 
     def configure(self, selection, *, sources_only=False, app_exists=True):
-        """Preflight all sources; disable old listeners; enable only verified sources."""
+        """Preflight all sources; disable old listeners; plan selected polling sources for the Bicep triggers layer."""
         selected = {item["functionName"]: item for item in validate_selection(selection)}
         self.authorize()
         resources, existing = self.list_triggers(), {}
@@ -367,7 +354,7 @@ class Setup:
             values.update({function + "TriggerConfigName": self.name(function) for function in OPERATIONS})
         if app_exists:
             self.settings(disabled)
-        endpoint = None
+        self.plan = []
         for function in OPERATIONS:
             resource = existing[function]
             if not resource and function not in selected:
@@ -386,6 +373,8 @@ class Setup:
                 properties.setdefault("metadata", {}).update(self.metadata(function))
                 if self.mode == "polling":
                     properties["deliveryMode"] = "Poll"
+                    self.plan.append({"name": self.name(function), "properties": properties})
+                    continue
                 else:
                     properties.setdefault("notificationDetails", {}).update(
                         dict(callback, callbackUrl=callback["callbackUrl"] + function))
@@ -400,23 +389,13 @@ class Setup:
                     raise ValueError("Planner source registration failed; listeners remain disabled.")
                 ready = verified.get("provisioningState") == "Succeeded" and all(
                     verified.get(key) == value for key, value in properties.items())
-                if ready and (self.mode != "polling" or function not in selected or
-                              verified.get("pollingEndpoints", {}).get("receiveUri")):
+                if ready:
                     break
                 if attempt == 29:
                     raise TimeoutError("Planner source readiness timed out; listeners remain disabled.")
                 self.wait(2)
-            if self.mode == "polling" and function in selected:
-                resolved = polling_endpoint(current["properties"]["pollingEndpoints"]["receiveUri"], self.name(function))
-                if endpoint is not None and endpoint != resolved:
-                    raise ValueError("Selected sources returned inconsistent polling gateways.")
-                endpoint = resolved
-        if self.mode == "polling":
-            if not endpoint:
-                raise ValueError("No verified polling gateway was returned.")
-            values["ConnectorNamespace__pollingEndpoint"] = endpoint
         values.update({f"AzureWebJobs.{function}.Disabled": str(function not in selected).lower() for function in OPERATIONS})
-        if not sources_only:
+        if not sources_only and self.mode != "polling":
             try:
                 self.settings(values)
             except (ValueError, RuntimeError, OSError):
@@ -425,7 +404,7 @@ class Setup:
                 except (ValueError, RuntimeError, OSError):
                     raise RuntimeError("Settings verification and rollback failed; manually disable this app.") from None
                 raise
-        print(f"Verified {len(selected)} Planner {self.mode} sources.")
+        print(f"{'Planned' if self.mode == 'polling' else 'Verified'} {len(selected)} Planner {self.mode} sources.")
         return values
 
 
@@ -455,17 +434,17 @@ def main(argv=None):
             raise ValueError("Invalid listener settings output.")
         values["ConnectorNamespace__pollingEndpoint"] = outputs["connectorPollingEndpoint"]
     else:
-        if options.phase == "sources" and options.mode != "polling":
-            raise ValueError("Only polling creates sources before the app.")
-        selection = select_inputs(project, options.inputs)
+        if (options.phase == "sources") != (options.mode == "polling"):
+            raise ValueError("Polling plans sources before the app; webhook configures them after deployment.")
         setup = Setup(outputs, options.mode)
+        selection = select_inputs(project, options.inputs, connector_setup=setup)
         exists = detect_app(outputs) if options.phase == "sources" else True
         values = setup.configure(selection, sources_only=options.phase == "sources", app_exists=exists)
         if options.phase == "sources":
-            cli("azd", "env", "set", "PLANNER_POLLING_ENDPOINT", values.pop("ConnectorNamespace__pollingEndpoint"))
             values.pop("ConnectorNamespace__credential", None)
-            encoded = base64.b64encode(json.dumps(values).encode()).decode()
-            cli("azd", "env", "set", "PLANNER_LISTENER_SETTINGS_ENCODED", encoded)
+            encoded = base64.b64encode(json.dumps({"selected": setup.plan, "settings": values}).encode()).decode()
+            cli("azd", "env", "set", "POLLING_TRIGGER_PLAN", encoded)
+            cli("azd", "env", "set", "POLLING_TRIGGER_INPUTS", base64.b64encode(json.dumps(selection).encode()).decode())
             return
     values.pop("ConnectorNamespace__credential", None)
     values.update(AzureWebJobsStorage="UseDevelopmentStorage=true", FUNCTIONS_WORKER_RUNTIME="python",

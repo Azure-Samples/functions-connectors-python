@@ -1,62 +1,39 @@
-param namespaceName string
-param connectionName string
+targetScope = 'resourceGroup'
 
 @minLength(1)
-@description('OneDrive connector folder identifier, not a display path. Passed unchanged to the connector.')
-param folderId string
+param namespaceName string
 
-var triggers = [
-  {
-    functionName: 'OnOneDriveNewFile'
-    operationName: 'OnNewFilesV2'
-  }
-  {
-    functionName: 'OnOneDriveUpdatedFile'
-    operationName: 'OnUpdatedFilesV2'
-  }
-  {
-    functionName: 'OnOneDriveNewFileContent'
-    operationName: 'OnNewFileV2'
-  }
-  {
-    functionName: 'OnOneDriveUpdatedFileContent'
-    operationName: 'OnUpdatedFileV2'
-  }
-]
+@minLength(1)
+@description('Base64 JSON plan saved by the consent and ownership-checking preprovision hook.')
+param triggerPlan string
+
+var plan = json(base64ToString(triggerPlan))
+var selected = plan.?selected ?? []
 
 resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview' existing = {
   name: namespaceName
 }
 
-resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [for trigger in triggers: {
-  parent: connectorNamespace
-  name: 'onedrive-${toLower(trigger.functionName)}'
-  properties: {
-    connectionDetails: {
-      connectionName: connectionName
-      connectorName: 'onedriveforbusiness'
-    }
-    deliveryMode: 'Poll'
-    operationName: trigger.operationName
-    parameters: [
-      { name: 'folderId', value: folderId }
-    ]
-    state: 'Enabled'
-    type: 'NotSpecified'
-    description: 'OneDrive ${trigger.functionName} with Poll delivery.'
+resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [
+  for trigger in selected: {
+    parent: connectorNamespace
+    name: trigger.name
+    properties: trigger.properties
   }
-}]
+]
 
-// Keep the service host and gateway path; remove the trigger path and optional /api suffix.
-var receiveUri = split(string(triggerConfigs[0].properties.pollingEndpoints.receiveUri), '?')[0]
-var endpointBase = substring(receiveUri, 0, indexOf(toLower(receiveUri), '/triggerconfigs/'))
+var endpointConfigName = plan.?endpointConfigName ?? ''
+resource endpointConfig 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' existing = if (!empty(endpointConfigName)) {
+  parent: connectorNamespace
+  name: endpointConfigName
+}
+var receiveUri = !empty(selected)
+  ? split(string(triggerConfigs[0].properties.pollingEndpoints.receiveUri), '?')[0]
+  : (!empty(endpointConfigName) ? split(string(endpointConfig!.properties.pollingEndpoints.receiveUri), '?')[0] : '')
+var receivePathIndex = indexOf(toLower(receiveUri), '/triggerconfigs/')
+var endpointPrefix = receivePathIndex < 0 ? '' : substring(receiveUri, 0, receivePathIndex)
 
-output pollingEndpoint string = endsWith(toLower(endpointBase), '/api')
-  ? substring(endpointBase, 0, max(0, length(endpointBase) - 4))
-  : endpointBase
-
-output triggerConfigSettings object = toObject(
-  triggers,
-  trigger => '${trigger.functionName}TriggerConfigName',
-  trigger => 'onedrive-${toLower(trigger.functionName)}'
-)
+output pollingEndpoint string = endsWith(toLower(endpointPrefix), '/api')
+  ? substring(endpointPrefix, 0, max(length(endpointPrefix) - 4, 0))
+  : endpointPrefix
+output triggerConfigSettings object = plan.?settings ?? {}

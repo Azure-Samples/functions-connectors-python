@@ -1,13 +1,10 @@
 targetScope = 'subscription'
 
 param resourceGroupName string
-param functionAppName string
 param connectorNamespaceName string
-param connectorNamespaceConnectionName string
-@minLength(1)
-param dataverseEnvironmentUrl string
-@minLength(1)
-param dataverseTableName string
+// The preprovision hook completes consent, validates inputs and ownership, then saves this plan.
+// The empty default lets azd validate parameters before that hook runs.
+param triggerPlan string
 
 resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' existing = { name: resourceGroupName }
 
@@ -16,13 +13,11 @@ module pollTriggers './poll-triggers.bicep' = {
   name: 'poll-triggers'
   params: {
     namespaceName: connectorNamespaceName
-    connectionName: connectorNamespaceConnectionName
-    functionAppName: functionAppName
-    environmentUrl: dataverseEnvironmentUrl
-    tableName: dataverseTableName
+    triggerPlan: triggerPlan
   }
 }
 
 output connectorPollingEndpoint string = pollTriggers.outputs.pollingEndpoint
-output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings
 output triggerConfigSettingsEncoded string = base64(string(pollTriggers.outputs.triggerConfigSettings))
+
+output triggerConfigSettings object = pollTriggers.outputs.triggerConfigSettings

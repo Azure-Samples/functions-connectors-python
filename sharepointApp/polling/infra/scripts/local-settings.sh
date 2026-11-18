@@ -2,5 +2,6 @@
 sharepoint_setup() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  "${PYTHON:-python}" "$script_dir/setup.py" --mode polling --project "$script_dir/../.." "$@"
+  python_cmd=${PYTHON:-$(command -v python3 || command -v python || echo python3)}
+  "$python_cmd" "$script_dir/setup.py" --mode polling --project "$script_dir/../.." "$@"
 }

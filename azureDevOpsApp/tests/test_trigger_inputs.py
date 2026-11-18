@@ -271,15 +271,21 @@ class TriggerInputTests(unittest.TestCase):
                 selected = json.loads(base64.b64decode(saved[setting]))
                 self.assertEqual([item["functionName"] for item in selected], [FUNCTION])
                 self.assertEqual(len(requests), 3)
-                self.assertEqual(len(writes), 1)
-                self.assertEqual(writes[0]["properties"]["operationName"], "OnGitPush")
                 if mode == "polling":
-                    self.assertEqual(writes[0]["properties"]["deliveryMode"], "Poll")
-                    self.assertNotIn("notificationDetails", writes[0]["properties"])
-                    flags = json.loads(base64.b64decode(saved["triggerConfigSettingsEncoded"]))
+                    self.assertEqual(writes, [])
+                    plan = json.loads(base64.b64decode(saved["POLLING_TRIGGER_PLAN"]))
+                    self.assertEqual([item["name"] for item in plan["selected"]],
+                                     [f"azuredevops-demo-entra-{FUNCTION.lower()}"])
+                    properties = plan["selected"][0]["properties"]
+                    self.assertEqual(properties["operationName"], "OnGitPush")
+                    self.assertEqual(properties["deliveryMode"], "Poll")
+                    self.assertNotIn("notificationDetails", properties)
+                    flags = plan["settings"]
                     self.assertEqual(flags[f"AzureWebJobs.{FUNCTION}.Disabled"], "false")
                     self.assertEqual(flags["AzureWebJobs.OnAzureDevOpsBuildCompleted.Disabled"], "true")
                 else:
+                    self.assertEqual(len(writes), 1)
+                    self.assertEqual(writes[0]["properties"]["operationName"], "OnGitPush")
                     self.assertIn(f"functionName={FUNCTION}", writes[0]["properties"]["notificationDetails"]["callbackUrl"])
                     self.assertEqual(app_settings[-1][f"AzureWebJobs.{FUNCTION}.Disabled"], "false")
                     self.assertEqual(app_settings[-1]["AzureWebJobs.OnAzureDevOpsBuildCompleted.Disabled"], "true")

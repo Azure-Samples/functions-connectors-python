@@ -4,8 +4,6 @@
   "parameters": {
     "resourceGroupName": { "value": "${resourceGroupName}" },
     "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
-    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
-    "teamsGroupId": { "value": "${TEAMS_GROUP_ID=selected-by-preprovision-hook}" },
-    "teamsChannelId": { "value": "${TEAMS_CHANNEL_ID=selected-by-preprovision-hook}" }
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }

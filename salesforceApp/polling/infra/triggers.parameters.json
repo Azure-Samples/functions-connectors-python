@@ -2,6 +2,8 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "pollingSettingsEncoded": { "value": "${SALESFORCE_POLL_SETTINGS}" }
+    "resourceGroupName": { "value": "${resourceGroupName}" },
+    "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }

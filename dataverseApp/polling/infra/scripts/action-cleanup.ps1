@@ -88,6 +88,29 @@ function Assert-DataverseDestination {
     }
 }
 
+function Get-DataverseActionSelectors {
+    param([object[]] $Parameters)
+    $values = @{}
+    foreach ($parameter in $Parameters) {
+        if ($values.ContainsKey($parameter.name)) { throw 'Duplicate Dataverse action parameter.' }
+        $values[$parameter.name] = $parameter.value
+    }
+    if ($values.ContainsKey('body')) {
+        if ($values.Count -ne 4 -or $null -eq $values.body) { throw 'Unexpected Dataverse action parameters.' }
+        foreach ($name in @('entityname', 'sdkmessagename')) {
+            $values[$name] = $values.body.$name
+        }
+        $values.Remove('body')
+    }
+    if ($values.Count -ne 5) { throw 'Unexpected Dataverse action parameters.' }
+    $selectors = [ordered]@{}
+    foreach ($name in @('organization', 'catalog', 'category', 'entityname', 'sdkmessagename')) {
+        if ([string]::IsNullOrWhiteSpace([string]$values[$name])) { throw "Missing Dataverse action selector '$name'." }
+        $selectors[$name] = [string]$values[$name]
+    }
+    return $selectors
+}
+
 function Protect-DataverseActionRegistration {
     [CmdletBinding()]
     param($Context, [string] $JournalPath, $Config, $Outputs, [switch] $BeforeCreate)
@@ -95,14 +118,7 @@ function Protect-DataverseActionRegistration {
     if ($null -ne $Config) {
         if ($Config.name -cne $Context.triggerName) { throw 'Dataverse action configuration name differs.' }
         Assert-DataverseDestination $Context $Config $Outputs $Context.operationName $Context.functionName
-        if (@($Config.properties.parameters).Count -ne 5) { throw 'Unexpected Dataverse action parameters.' }
-        foreach ($name in @('organization', 'catalog', 'category', 'entityname', 'sdkmessagename')) {
-            $values = @($Config.properties.parameters | Where-Object name -CEQ $name)
-            if ($values.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$values[0].value)) {
-                throw "Dataverse action configuration has missing or ambiguous '$name'."
-            }
-            $selectors[$name] = [string]$values[0].value
-        }
+        $selectors = Get-DataverseActionSelectors $Config.properties.parameters
         if ($selectors.organization.TrimEnd('/') -cne $Context.organization) { throw 'Dataverse source organization differs.' }
     } elseif ($BeforeCreate) {
         $selectors.organization = $Context.organization

@@ -348,7 +348,7 @@ def write_local(project: Path, values: dict, *, force: bool) -> None:
 
 def setup(outputs: dict, selected: object, mode: str, project: Path, *, run=cli, wait=time.sleep,
           force_local: bool = False, prompt=input) -> None:
-    """Consent, validate and preflight ownership before reconciling selected sources."""
+    """Consent, validate and preflight ownership; polling saves selected sources for the Bicep triggers layer."""
     ctx = context(outputs, mode)
     if selected is not None:
         validate_selection(selected)
@@ -411,7 +411,7 @@ def setup(outputs: dict, selected: object, mode: str, project: Path, *, run=cli,
     if mode == "webhook":
         with private_json({"AzureWebJobs." + function + ".Disabled": "true" for function in OPERATIONS}) as path:
             run("az", settings_arguments + ["--settings", path])
-    settings, endpoint = {}, None
+    settings, trigger_plan = {}, []
     for function, name, url, resource in plan:
         active = function in selections
         settings["AzureWebJobs." + function + ".Disabled"] = str(not active).lower()
@@ -436,26 +436,23 @@ def setup(outputs: dict, selected: object, mode: str, project: Path, *, run=cli,
         if mode == "polling":
             properties["deliveryMode"] = "Poll"
             properties.pop("notificationDetails", None)
-        else:
-            notification = properties.setdefault("notificationDetails", {})
-            notification.update(callbackUrl="https://" + outputs["FUNCTION_APP_HOSTNAME"] + "/runtime/webhooks/connector?functionName=" + function, httpMethod="Post")
-            notification.setdefault("authentication", {}).update(type="QueryString", name="code", value=key)
+            trigger_plan.append({"name": name, "properties": properties})
+            print(f"Planned {function} ({mode}).")
+            continue
+        notification = properties.setdefault("notificationDetails", {})
+        notification.update(callbackUrl="https://" + outputs["FUNCTION_APP_HOSTNAME"] + "/runtime/webhooks/connector?functionName=" + function, httpMethod="Post")
+        notification.setdefault("authentication", {}).update(type="QueryString", name="code", value=key)
         ordered = lambda values: sorted(values, key=lambda item: item["name"])
         unchanged = bool(resource) and {**previous, "parameters": ordered(previous.get("parameters", []))} == {**properties, "parameters": ordered(properties["parameters"])}
         created = resource if unchanged else rest(run, ctx, "PUT", url, {"properties": properties})
-        created = wait_ready(run, ctx, url, created, require_receive=mode == "polling", wait=wait)
+        created = wait_ready(run, ctx, url, created, require_receive=False, wait=wait)
         owned(created, ctx, outputs, function, name, mode)
         if created["properties"].get("state") != "Enabled":
             raise ValueError("Selected source was not enabled.")
-        if mode == "polling":
-            received = poll_endpoint(created["properties"]["pollingEndpoints"]["receiveUri"], name)
-            if endpoint and endpoint != received:
-                raise ValueError("Selected polling endpoints disagree.")
-            endpoint = received
         print(f"Configured {function} ({mode}).")
     if mode == "polling":
-        run("azd", ["env", "set", "connectorPollingEndpoint", endpoint])
-        run("azd", ["env", "set", "triggerConfigSettingsEncoded", base64.b64encode(json.dumps(settings).encode()).decode()])
+        document = {"selected": trigger_plan, "settings": settings}
+        run("azd", ["env", "set", "POLLING_TRIGGER_PLAN", base64.b64encode(json.dumps(document).encode()).decode()])
     else:
         with private_json({**settings, "AzureDevOpsConnection": runtime}) as path:
             run("az", settings_arguments + ["--settings", path])

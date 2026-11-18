@@ -1,53 +1,39 @@
-param namespaceName string
-param connectionName string
-param functionAppName string
-@minLength(1)
-param environmentUrl string
-param tableName string = 'account'
+targetScope = 'resourceGroup'
 
-var organization = endsWith(environmentUrl, '/') ? substring(environmentUrl, 0, length(environmentUrl) - 1) : environmentUrl
-var destination = {
-  destinationType: 'functionApp'
-  functionAppName: functionAppName
-  functionAppResourceGroup: resourceGroup().name
-  functionAppSubscriptionId: subscription().subscriptionId
-}
+@minLength(1)
+param namespaceName string
+
+@minLength(1)
+@description('Base64 JSON plan saved by the consent and ownership-checking preprovision hook.')
+param triggerPlan string
+
+var plan = json(base64ToString(triggerPlan))
+var selected = plan.?selected ?? []
 
 resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview' existing = {
   name: namespaceName
 }
 
-resource rowTrigger 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = {
-  parent: connectorNamespace
-  name: 'dataverse-ondataverserowchanged'
-  properties: {
-    connectionDetails: { connectionName: connectionName, connectorName: 'commondataservice' }
-    deliveryMode: 'Poll'
-    operationName: 'SubscribeWebhookTrigger'
-    metadata: union(destination, { functionName: 'OnDataverseRowChanged' })
-    parameters: [
-      { name: 'organization', value: organization }
-      { name: 'entityname', value: tableName }
-      { name: 'message', value: '7' }
-      { name: 'scope', value: '4' }
-    ]
-    state: 'Enabled'
-    type: 'NotSpecified'
-    description: 'Current Dataverse added, modified, or deleted operation with Poll delivery.'
+resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [
+  for trigger in selected: {
+    parent: connectorNamespace
+    name: trigger.name
+    properties: trigger.properties
   }
+]
+
+var endpointConfigName = plan.?endpointConfigName ?? ''
+resource endpointConfig 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' existing = if (!empty(endpointConfigName)) {
+  parent: connectorNamespace
+  name: endpointConfigName
 }
+var receiveUri = !empty(selected)
+  ? split(string(triggerConfigs[0].properties.pollingEndpoints.receiveUri), '?')[0]
+  : (!empty(endpointConfigName) ? split(string(endpointConfig!.properties.pollingEndpoints.receiveUri), '?')[0] : '')
+var receivePathIndex = indexOf(toLower(receiveUri), '/triggerconfigs/')
+var endpointPrefix = receivePathIndex < 0 ? '' : substring(receiveUri, 0, receivePathIndex)
 
-var receiveUri = split(string(rowTrigger.properties.pollingEndpoints.receiveUri), '?')[0]
-var endpointBase = substring(receiveUri, 0, indexOf(toLower(receiveUri), '/triggerconfigs/'))
-
-output pollingEndpoint string = endsWith(toLower(endpointBase), '/api')
-  ? substring(endpointBase, 0, max(0, length(endpointBase) - 4))
-  : endpointBase
-
-output triggerConfigSettings object = {
-  OnDataverseRowChangedTriggerConfigName: rowTrigger.name
-  OnDataverseActionPerformedTriggerConfigName: 'dataverse-ondataverseactionperformed'
-  OnDataverseRowAddedTriggerConfigName: 'dataverse-ondataverserowadded'
-  OnDataverseRowModifiedTriggerConfigName: 'dataverse-ondataverserowmodified'
-  OnDataverseRowDeletedTriggerConfigName: 'dataverse-ondataverserowdeleted'
-}
+output pollingEndpoint string = endsWith(toLower(endpointPrefix), '/api')
+  ? substring(endpointPrefix, 0, max(length(endpointPrefix) - 4, 0))
+  : endpointPrefix
+output triggerConfigSettings object = plan.?settings ?? {}

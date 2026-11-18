@@ -1,0 +1,98 @@
+{
+  "connectorName": "sharepointonline",
+  "namePrefix": "sharepoint",
+  "triggers": [
+    {
+      "functionName": "OnSharepointNewFile",
+      "operationName": "GetOnNewFileItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointUpdatedFile",
+      "operationName": "GetOnUpdatedFileItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointNewItem",
+      "operationName": "GetOnNewItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIST_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointUpdatedItem",
+      "operationName": "GetOnUpdatedItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIST_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointChangedItem",
+      "operationName": "GetOnChangedItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIST_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointDeletedItem",
+      "operationName": "GetOnDeletedItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIST_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointDeletedFile",
+      "operationName": "GetOnDeletedFileItems",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointFormSubmitted",
+      "operationName": "GetOnNewItemsFromForm",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH",
+        "form": "SHAREPOINT_FORM_ID"
+      }
+    },
+    {
+      "functionName": "OnSharepointFileClassified",
+      "operationName": "GetOnUpdatedFileClassifiedTimes",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH"
+      }
+    },
+    {
+      "functionName": "OnSharepointRecurringDigest",
+      "operationName": "GetOnRecurrenceDigest",
+      "environment": {
+        "dataset": "SHAREPOINT_SITE_URL",
+        "table": "SHAREPOINT_LIBRARY_NAME",
+        "folderPath": "SHAREPOINT_FOLDER_PATH",
+        "runSchedule": "SHAREPOINT_DIGEST_SCHEDULE"
+      }
+    }
+  ]
+}

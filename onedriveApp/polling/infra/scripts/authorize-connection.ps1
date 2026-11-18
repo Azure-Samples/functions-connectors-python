@@ -65,7 +65,7 @@ if ((Get-ConnectionStatus) -ne 'Connected') {
     if ($status -ne 'Connected') { throw 'Timed out waiting for the OneDrive connection to reach Connected status.' }
 }
 
-$python = if ($env:PYTHON) { $env:PYTHON } else { 'python' }
+$python = if ($env:PYTHON) { $env:PYTHON } elseif (Get-Command python -ErrorAction SilentlyContinue) { 'python' } elseif (Get-Command py -ErrorAction SilentlyContinue) { 'py' } else { 'python3' }
 & $python (Join-Path $PSScriptRoot 'select_folder.py')
 if ($LASTEXITCODE -ne 0) { throw 'OneDrive folder selection failed.' }
 Write-Host 'Done. The OneDrive connection is authorized; the triggers layer will create the 4 enabled Poll triggers.'

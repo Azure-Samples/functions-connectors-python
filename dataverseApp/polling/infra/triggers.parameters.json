@@ -3,10 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "resourceGroupName": { "value": "${resourceGroupName}" },
-    "functionAppName": { "value": "${functionAppName}" },
     "connectorNamespaceName": { "value": "${connectorNamespaceName}" },
-    "connectorNamespaceConnectionName": { "value": "${connectorNamespaceConnectionName}" },
-    "dataverseEnvironmentUrl": { "value": "${dataverseEnvironmentUrl}" },
-    "dataverseTableName": { "value": "${dataverseTableName}" }
+    "triggerPlan": { "value": "${POLLING_TRIGGER_PLAN=eyJzZWxlY3RlZCI6W10sInNldHRpbmdzIjp7fX0=}" }
   }
 }

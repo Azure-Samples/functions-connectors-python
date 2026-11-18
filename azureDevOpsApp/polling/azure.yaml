@@ -54,7 +54,7 @@ hooks:
       continueOnError: false
     posix:
       shell: sh
-      run: ./infra/scripts/postdeploy.sh
+      run: sh ./infra/scripts/postdeploy.sh
       continueOnError: false
 services:
   function-app:

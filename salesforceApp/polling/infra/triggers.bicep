@@ -1,7 +1,22 @@
 targetScope = 'subscription'
 
-@minLength(1)
-@description('Ready Poll settings from the consent and ownership-checking preprovision hook. The hook owns trigger REST updates.')
-param pollingSettingsEncoded string
+param resourceGroupName string
+param connectorNamespaceName string
+// The preprovision hook completes consent, validates inputs and ownership, then saves this plan.
+// The empty default lets azd validate parameters before that hook runs.
+param triggerPlan string
 
-output triggerConfigSettingsEncoded string = pollingSettingsEncoded
+resource rg 'Microsoft.Resources/resourceGroups@2025-04-01' existing = { name: resourceGroupName }
+
+module pollTriggers './poll-triggers.bicep' = {
+  scope: rg
+  name: 'poll-triggers'
+  params: {
+    namespaceName: connectorNamespaceName
+    triggerPlan: triggerPlan
+  }
+}
+
+output triggerConfigSettingsEncoded string = base64(string(union(pollTriggers.outputs.triggerConfigSettings, {
+  ConnectorNamespace__pollingEndpoint: pollTriggers.outputs.pollingEndpoint
+})))

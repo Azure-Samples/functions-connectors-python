@@ -1,0 +1,64 @@
+{
+  "connectorName": "teams",
+  "namePrefix": "teams",
+  "triggers": [
+    {
+      "functionName": "OnNewChannelMessage",
+      "operationName": "OnNewChannelMessage",
+      "environment": {
+        "groupId": "TEAMS_GROUP_ID",
+        "channelId": "TEAMS_CHANNEL_ID"
+      }
+    },
+    {
+      "functionName": "OnNewChannelMessageMentioningMe",
+      "operationName": "OnNewChannelMessageMentioningMe",
+      "environment": {
+        "groupId": "TEAMS_GROUP_ID",
+        "channelId": "TEAMS_CHANNEL_ID"
+      }
+    },
+    {
+      "functionName": "OnGroupMembershipAdd",
+      "operationName": "OnGroupMembershipAdd",
+      "environment": {
+        "groupId": "TEAMS_GROUP_ID"
+      }
+    },
+    {
+      "functionName": "OnGroupMembershipRemoval",
+      "operationName": "OnGroupMembershipRemoval",
+      "environment": {
+        "groupId": "TEAMS_GROUP_ID"
+      }
+    },
+    {
+      "functionName": "WebhookChatMessageTrigger",
+      "operationName": "WebhookChatMessageTrigger"
+    },
+    {
+      "functionName": "WebhookNewMessageTrigger",
+      "operationName": "WebhookNewMessageTrigger"
+    },
+    {
+      "functionName": "WebhookAtMentionTrigger",
+      "operationName": "WebhookAtMentionTrigger"
+    },
+    {
+      "functionName": "WebhookKeywordTrigger",
+      "operationName": "WebhookKeywordTrigger"
+    },
+    {
+      "functionName": "WebhookMessageReactionTrigger",
+      "operationName": "WebhookMessageReactionTrigger"
+    },
+    {
+      "functionName": "RecordingTrigger",
+      "operationName": "RecordingTrigger"
+    },
+    {
+      "functionName": "TranscriptTrigger",
+      "operationName": "TranscriptTrigger"
+    }
+  ]
+}

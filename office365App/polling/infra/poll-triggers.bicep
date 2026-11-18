@@ -1,96 +1,39 @@
+targetScope = 'resourceGroup'
+
+@minLength(1)
 param namespaceName string
-param connectionName string
-param mailFolderPath string = 'Inbox'
-param calendarId string = 'Calendar'
-param sharedMailboxAddress string = ''
-param sharedMailboxFolderId string = 'Inbox'
 
-var triggers = [
-  {
-    functionName: 'OnNewEmail'
-    operationName: 'OnNewEmailV3'
-    parameters: [
-      { name: 'folderPath', value: mailFolderPath }
-    ]
-  }
-  {
-    functionName: 'OnFlaggedEmail'
-    operationName: 'OnFlaggedEmailV4'
-    parameters: [
-      { name: 'folderPath', value: mailFolderPath }
-    ]
-  }
-  {
-    functionName: 'OnNewMentionMeEmail'
-    operationName: 'OnNewMentionMeEmailV3'
-    parameters: [
-      { name: 'folderPath', value: mailFolderPath }
-    ]
-  }
-  {
-    functionName: 'OnNewCalendarEvent'
-    operationName: 'CalendarGetOnNewItemsV3'
-    parameters: [
-      { name: 'table', value: calendarId }
-    ]
-  }
-  {
-    functionName: 'OnUpcomingEvent'
-    operationName: 'OnUpcomingEventsV3'
-    parameters: [
-      { name: 'table', value: calendarId }
-    ]
-  }
-  {
-    functionName: 'OnCalendarUpdatedItems'
-    operationName: 'CalendarGetOnUpdatedItemsV3'
-    parameters: [
-      { name: 'table', value: calendarId }
-    ]
-  }
-]
+@minLength(1)
+@description('Base64 JSON plan saved by the consent and ownership-checking preprovision hook.')
+param triggerPlan string
 
-var sharedMailboxTrigger = {
-  functionName: 'OnSharedMailboxNewEmail'
-  operationName: 'SharedMailboxOnNewEmailV2'
-  parameters: [
-    { name: 'mailboxAddress', value: sharedMailboxAddress }
-    { name: 'folderId', value: sharedMailboxFolderId }
-  ]
-}
-var activeTriggers = concat(triggers, empty(sharedMailboxAddress) ? [] : [sharedMailboxTrigger])
+var plan = json(base64ToString(triggerPlan))
+var selected = plan.?selected ?? []
 
 resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview' existing = {
   name: namespaceName
 }
 
-resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [for trigger in activeTriggers: {
-  parent: connectorNamespace
-  name: 'office365-${toLower(trigger.functionName)}'
-  properties: {
-    connectionDetails: {
-      connectionName: connectionName
-      connectorName: 'office365'
-    }
-    deliveryMode: 'Poll'
-    operationName: trigger.operationName
-    parameters: trigger.parameters
-    state: 'Enabled'
-    type: 'NotSpecified'
-    description: 'Office 365 ${trigger.functionName} with Poll delivery.'
+resource triggerConfigs 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' = [
+  for trigger in selected: {
+    parent: connectorNamespace
+    name: trigger.name
+    properties: trigger.properties
   }
-}]
+]
 
-// Use the service's receive URI, removing the trigger path and optional /api suffix.
-var receiveUri = split(string(triggerConfigs[0].properties.pollingEndpoints.receiveUri), '?')[0]
-var endpointBase = substring(receiveUri, 0, indexOf(toLower(receiveUri), '/triggerconfigs/'))
+var endpointConfigName = plan.?endpointConfigName ?? ''
+resource endpointConfig 'Microsoft.Web/connectorGateways/triggerConfigs@2026-05-01-preview' existing = if (!empty(endpointConfigName)) {
+  parent: connectorNamespace
+  name: endpointConfigName
+}
+var receiveUri = !empty(selected)
+  ? split(string(triggerConfigs[0].properties.pollingEndpoints.receiveUri), '?')[0]
+  : (!empty(endpointConfigName) ? split(string(endpointConfig!.properties.pollingEndpoints.receiveUri), '?')[0] : '')
+var receivePathIndex = indexOf(toLower(receiveUri), '/triggerconfigs/')
+var endpointPrefix = receivePathIndex < 0 ? '' : substring(receiveUri, 0, receivePathIndex)
 
-output pollingEndpoint string = endsWith(toLower(endpointBase), '/api')
-  ? substring(endpointBase, 0, max(0, length(endpointBase) - 4))
-  : endpointBase
-
-output triggerConfigSettings object = toObject(
-  concat(triggers, [sharedMailboxTrigger]),
-  trigger => '${trigger.functionName}TriggerConfigName',
-  trigger => 'office365-${toLower(trigger.functionName)}'
-)
+output pollingEndpoint string = endsWith(toLower(endpointPrefix), '/api')
+  ? substring(endpointPrefix, 0, max(length(endpointPrefix) - 4, 0))
+  : endpointPrefix
+output triggerConfigSettings object = plan.?settings ?? {}
