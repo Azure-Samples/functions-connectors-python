@@ -16,7 +16,7 @@ Handlers log the function name and record count, not record content.
 - Contributor plus Role Based Access Control Administrator (or User Access Administrator) on the target subscription.
 - A Salesforce **production** or **Developer Edition** org. Sandbox orgs are not supported when deploying with `azd`, because the connection signs in through `login.salesforce.com`.
 - A Salesforce account with API access and read access to the selected objects, fields, and records.
-- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 - Python SDK: `requirements.txt` installs the right `azure-functions` version for your Python; see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 
 ## Deploy to Azure

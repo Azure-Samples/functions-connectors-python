@@ -23,7 +23,7 @@ Handlers log event names and item counts, not content.
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, and the [connector-namespace extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli).
 - PowerShell 7.3+ (`pwsh`) on every platform, used by the deployment hooks.
 - A Teams account with access to the team and channel you want to monitor. Optional events may need extra scopes, licenses, or policies.
-- For local runs: Python, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- For local runs: Python, [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
 The app deploys on Python 3.14. Locally, use Python 3.13 or newer; for 3.12 and older, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 

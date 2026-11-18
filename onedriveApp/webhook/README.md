@@ -17,7 +17,7 @@ Content handlers log only the trigger name, never file content. Metadata handler
 - PowerShell 7.3+ on Windows, or Bash and [jq](https://jqlang.org/) elsewhere.
 - Python (the deployed app uses Python 3.14).
 - A OneDrive for Business account with permission to authorize the connection.
-- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
 Python 3.13+ uses `azure-functions>=2.4.0` and `azurefunctions-extensions-connectors>=1.0.0` from `requirements.txt`. For older versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 

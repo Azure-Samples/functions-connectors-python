@@ -22,7 +22,7 @@ Handlers log event names and item counts, not content.
 - Python for the deployment hooks, plus PowerShell 7 on Windows.
 - Azure permission to create resources and role assignments, such as Owner, or Contributor plus Role Based Access Control Administrator.
 - An Azure DevOps account in the organization's home tenant, with project access and permission to manage [service hooks](https://learn.microsoft.com/azure/devops/service-hooks/overview?view=azure-devops#permissions). The organization's tenant policy must allow consent to the connector's Entra application.
-- For local runs: [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
+- For local runs: [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite).
 
 The app deploys on Python 3.14 and uses `azurefunctions-extensions-connectors>=1.0.0`. For older Python versions, see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).
 

@@ -10,7 +10,7 @@ The handler logs only its name, not payload content. This app does not provision
 
 ## Prerequisites
 
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75+, [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local), and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) for local runs.
 - An existing Connector Namespace, authorized connection, and webhook trigger configs ([webhook setup guide](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/connector-trigger-configuration.md#webhook-delivery)).
 - An existing Python Function App to deploy to (this sample does not create one), with a system-assigned identity and identity-based host storage.
 - Python SDK: `azure-functions>=2.4.0` on Python 3.13+; see [Python 3.12 and older supported versions](../../README.md#python-312-and-older-supported-versions).

@@ -45,7 +45,7 @@ The Generic samples use existing resources instead of `azd`; follow their setup 
 
 ## Local development
 
-Install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite). Follow the selected app's local development steps for dependencies, local settings, and webhook tunnels where needed.
+Install [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite). Follow the selected app's local development steps for dependencies, local settings, and webhook tunnels where needed.
 
 ## Test
 
