@@ -1,39 +1,33 @@
 # Azure Functions connectors samples (Python)
 
-This repository contains Python samples for the **Connector Namespace** integration with Azure Functions. Each connector folder documents its supported events, bindings, prerequisites, and setup steps. Start with the guide for the connector you want to use.
+Run Python Azure Functions when events occur in Teams, Outlook, Salesforce, and other services. Events arrive through a [Connector Namespace](https://connectors.azure.com/) using managed connectors.
 
-## What are Functions connectors?
+## Deploy to Azure
 
-Azure Functions integrates with the managed connectors platform that backs Logic Apps and Power Platform:
-
-- **Connector triggers** — run a function when an event occurs in an external service, such as a new email, file, or Teams message.
-
-## Prerequisites
+### Prerequisites
 
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) ≥ 2.75.0
-- [A supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
-- [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli) — install with:
+- [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.75.0+
+- A [supported Python version](https://learn.microsoft.com/azure/azure-functions/functions-versions?tabs=isolated-process%2Cv4&pivots=programming-language-python#languages)
+- The [`connector-namespace` Azure CLI extension](https://github.com/Azure/Connectors/tree/main/public-preview/connector-namespace-cli):
 
   ```bash
   # Bash
   curl -fsSL https://aka.ms/connector-namespace-cli-install | sh
   ```
 
-  or
-
   ```pwsh
   # PowerShell
   irm https://aka.ms/connector-namespace-cli-install-ps | iex
   ```
 
-- `jq` (for bash post-deploy scripts on macOS/Linux)
+Each sample lists any additional requirements.
 
-## Getting-started samples
+### Choose a sample
 
-Follow each connector's guide for deployment or setup. Each `polling` or `webhook` folder is an independent app; some samples use existing Azure resources rather than provisioning them with `azd up`.
+Most connectors have standalone `polling` and `webhook` apps. Follow the selected app's deployment steps and run `azd up` from its folder to provision and deploy. Rerun `azd up` for changes or retries. Templates deploy Python 3.14 on Flex Consumption.
 
-The included deployment templates use Python 3.14 on Flex Consumption.
+The Generic samples use existing resources instead of `azd`; follow their setup instructions.
 
 | Guide | Connector |
 | --- | --- |
@@ -44,27 +38,43 @@ The included deployment templates use Python 3.14 on Flex Consumption.
 | [Dataverse](./dataverseApp/README.md) | [Microsoft Dataverse (Common Data Service)](https://learn.microsoft.com/connectors/commondataservice/) |
 | [Azure Blob](./azureblobApp/README.md) | [Azure Blob Storage](https://learn.microsoft.com/connectors/azureblob/) |
 | [Generic](./genericApp/README.md) | [Any connector](https://learn.microsoft.com/connectors/), using raw string payloads |
-| [Kusto](./kustoApp/README.md) | [Azure Data Explorer](https://learn.microsoft.com/connectors/kusto/) |
+| [Kusto (handler scaffold)](./kustoApp/README.md) | [Azure Data Explorer](https://learn.microsoft.com/connectors/kusto/) |
 | [Azure DevOps](./azureDevOpsApp/README.md) | [Azure DevOps (Entra OAuth)](https://learn.microsoft.com/connectors/visualstudioteamservices/) |
 | [Planner](./plannerApp/README.md) | [Microsoft Planner](https://learn.microsoft.com/connectors/planner/) |
 | [Salesforce](./salesforceApp/README.md) | [Salesforce](https://learn.microsoft.com/connectors/salesforce/) |
 
-## More triggers and operations
+## Local development
 
-See the [Operations to Azure Functions Signature Mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md) for supported connector triggers and their Python signatures.
+Install [Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite). Follow the selected app's local development steps for dependencies, local settings, and webhook tunnels where needed.
 
-## The packages these samples use
+## Test
 
-| Package | Stable minimum | Role |
+Follow the selected app's test steps to generate source events and confirm function invocations in the logs.
+
+## Deprovision
+
+For `azd` apps, run from the app's folder:
+
+```bash
+azd down --purge
+```
+
+Follow the app's additional cleanup instructions for source subscriptions or manually created resources.
+
+## More triggers
+
+See [Operations to Azure Functions signature mapping](https://github.com/Azure/azure-functions-connector-extension/blob/main/docs/operations-functions-match.md) for all supported connector triggers and their Python signatures.
+
+## Packages
+
+| Package | Minimum | Role |
 | --- | --- | --- |
-| [`azure-functions`](https://pypi.org/project/azure-functions/) | `>=2.4.0` (Python 3.13+) | The Azure Functions Python SDK. |
-| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | `>=1.0.0` | Connector trigger bindings. |
-
-Install requirements from the selected app's folder. Requirements select the Functions SDK for your Python version; the generic raw-payload samples do not need the connector extension.
+| [`azure-functions`](https://pypi.org/project/azure-functions/) | `2.4.0` (Python 3.13+) | Azure Functions Python SDK |
+| [`azurefunctions-extensions-connectors`](https://pypi.org/project/azurefunctions-extensions-connectors/) | `1.0.0` | Connector trigger bindings (not needed by the generic raw-payload samples) |
 
 ### Python 3.12 and older supported versions
 
-On Python 3.12 and older supported Functions runtimes, requirements select `azure-functions>=1.27.0b1`. Set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in the deployed app. This older SDK requires a beta minimum because no stable 1.27.0 release exists. Deployment templates use Python 3.14.
+Install `azure-functions>=1.27.0b1` before the sample requirements and set `PYTHON_ISOLATE_WORKER_DEPENDENCIES=1` locally and in the deployed app.
 
 ## Related repos
 
