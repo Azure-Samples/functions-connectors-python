@@ -132,6 +132,7 @@ def prompt_value(label, schema, prompt):
                         <= schema.get("maximum", math.inf)):
                     return value
             except ValueError:
+                # Invalid numeric input is expected; fall through to the retry prompt below.
                 pass
         else:
             raise ValueError(f"Unsupported input schema for {label}; no values were guessed.")
