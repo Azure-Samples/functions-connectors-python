@@ -36,8 +36,6 @@ Deployment creates a Function App, host storage, monitoring, a separate monitore
 
 The hook waits up to five minutes for the connection to become **Ready** or **Connected**. Storage RBAC may take longer to propagate. If source polling reports authorization errors, verify the namespace identity's source role, allow propagation, and rerun the hook.
 
-Reprovisioning an existing environment creates a separate `-mi` connection and registers the trigger against it; rerunning the hook alone does not migrate an OAuth connection. The old connection is retained.
-
 ## Local development
 
 - Start Azurite separately.
