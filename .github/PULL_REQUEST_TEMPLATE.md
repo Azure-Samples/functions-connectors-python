@@ -16,5 +16,5 @@ Manual trigger testing: state local or Azure and the result, or "not run". Use t
 - [ ] Validation passed, or I explained above why it does not apply.
 - [ ] Each polling/webhook sample still restores, builds, and deploys independently.
 - [ ] Updated affected READMEs and the `Unreleased` section of CHANGELOG.md.
-- [ ] Kept existing Learn metadata (`urlFragment`) stable in sample READMEs.
+- [ ] Added Microsoft Learn metadata to each new sample README.
 - [ ] Included no credentials, `local.settings.json`, `.azure` environments, build output, real payloads, or unredacted logs/screenshots.
