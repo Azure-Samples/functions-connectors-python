@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Office 365 Outlook webhook"
+description: Receive Office 365 Outlook connector events through webhook delivery in a Python Azure Functions app deployed using azd.
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-office365-webhook-python
+---
+-->
+
 # Office 365 Outlook webhook triggers (Python)
 
 The Connector Namespace calls the deployed function's connector callback when mail and calendar events occur. Six personal mailbox and calendar triggers are enabled by default; the shared-mailbox trigger is opt-in.

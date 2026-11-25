@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Azure DevOps webhook"
+description: Receive Azure DevOps connector events through webhook delivery in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-azure-devops-webhook-python
+---
+-->
+
 # Azure DevOps webhook triggers (Python)
 
 The Connector Namespace calls the deployed function app's callback when an Azure DevOps event occurs.

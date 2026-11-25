@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Microsoft Dataverse webhook"
+description: Receive Microsoft Dataverse connector events through webhook delivery in a Python Azure Functions app deployed using azd.
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-dataverse-webhook-python
+---
+-->
+
 # Microsoft Dataverse webhook triggers (Python)
 
 The Connector Namespace calls the deployed function's connector callback, authenticated with the `connector_extension` system key.

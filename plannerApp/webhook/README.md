@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Planner webhook"
+description: Receive Microsoft Planner connector events through webhook delivery in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-planner-webhook-python
+---
+-->
+
 # Planner webhook triggers (Python)
 
 The Connector Namespace calls the deployed function app's callback when a Planner event occurs.

@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): OneDrive for Business webhook"
+description: Receive OneDrive for Business connector events through webhook delivery in a Python Azure Functions app deployed using azd.
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-onedrive-webhook-python
+---
+-->
+
 # OneDrive for Business webhook triggers (Python)
 
 The Connector Namespace sends OneDrive events to the deployed function app's connector callback.

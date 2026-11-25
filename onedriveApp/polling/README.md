@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): OneDrive for Business polling"
+description: Receive OneDrive for Business connector events with polling in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-onedrive-polling-python
+---
+-->
+
 # OneDrive for Business polling triggers (Python)
 
 The Functions host pulls OneDrive events from the Connector Namespace, so no public endpoint is required.
