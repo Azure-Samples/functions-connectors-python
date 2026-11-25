@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest an improvement to the Python connector samples or docs.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, account or resource identifiers, callback URLs, or real connector data.
+  - type: input
+    id: sample
+    attributes:
+      label: Sample or connector
+      description: Existing sample path, or a proposed connector, trigger operation, and polling/webhook mode.
+      placeholder: sharepointApp/webhook
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or scenario
+      description: What developer scenario is missing or unclear today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+      description: Expected behavior or documentation change, and any permissions, deployment, or connector limitations.
+    validations:
+      required: true

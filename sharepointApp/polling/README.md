@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): SharePoint Online polling"
+description: Receive SharePoint Online connector events with polling in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-sharepoint-polling-python
+---
+-->
+
 # SharePoint Online polling triggers (Python)
 
 The Functions host pulls SharePoint events from the Connector Namespace, so no public endpoint is required.

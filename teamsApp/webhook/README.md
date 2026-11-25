@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Microsoft Teams webhook"
+description: Receive Microsoft Teams connector events through webhook delivery in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-teams-webhook-python
+---
+-->
+
 # Microsoft Teams webhook triggers (Python)
 
 The Connector Namespace calls the deployed function's connector callback when Teams events occur. Four typed events are enabled by default; seven raw-string events are opt-in.

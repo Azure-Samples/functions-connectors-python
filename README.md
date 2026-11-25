@@ -1,5 +1,7 @@
 # Azure Functions connectors samples (Python)
 
+[![Sample CI](https://github.com/Azure-Samples/functions-connectors-python/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Azure-Samples/functions-connectors-python/actions/workflows/ci.yml)
+
 Run Python Azure Functions when events occur in Teams, Outlook, Salesforce, and other services. Events arrive through a [Connector Namespace](https://connectors.azure.com/) using managed connectors.
 
 ## Deploy to Azure
@@ -50,6 +52,8 @@ Install [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions
 ## Test
 
 Follow the selected app's test steps to generate source events and confirm function invocations in the logs.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [CHANGELOG.md](CHANGELOG.md) for notable changes.
 
 ## Deprovision
 

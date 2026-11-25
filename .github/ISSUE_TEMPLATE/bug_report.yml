@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible problem in a Python connector sample.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, connection keys, callback URLs, `local.settings.json`, tenant/subscription/resource identifiers, or real connector payloads. Redact logs and screenshots. Report security vulnerabilities privately at https://msrc.microsoft.com/report/.
+  - type: input
+    id: sample
+    attributes:
+      label: Sample path
+      description: Connector and delivery folder, or "repo-wide".
+      placeholder: office365App/polling
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it fail?
+      options:
+        - Restore or build
+        - Provisioning or deployment (azd)
+        - Connection or trigger setup
+        - Event delivery or function execution
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Azure Functions Core Tools, azd, Azure CLI, and sample commit. State whether it ran locally or in Azure.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Commands and steps using placeholders and test data.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted error output
+      description: Only the relevant error. Never paste settings files, payloads, or authentication output.
+      render: text

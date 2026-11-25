@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Microsoft Dataverse polling"
+description: Receive Microsoft Dataverse connector events with polling in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-dataverse-polling-python
+---
+-->
+
 # Microsoft Dataverse polling triggers (Python)
 
 The Functions host pulls Dataverse events from the Connector Namespace, so the app needs no public endpoint.

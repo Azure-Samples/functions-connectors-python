@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Salesforce webhook"
+description: Receive Salesforce connector events through webhook delivery in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-salesforce-webhook-python
+---
+-->
+
 # Salesforce webhook triggers (Python)
 
 The Connector Namespace calls the deployed function's callback when Salesforce records are created or modified.

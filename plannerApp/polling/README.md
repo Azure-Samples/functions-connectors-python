@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Planner polling"
+description: Receive Microsoft Planner connector events with polling in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-planner-polling-python
+---
+-->
+
 # Planner polling triggers (Python)
 
 The Functions host pulls Planner events from the Connector Namespace polling endpoint. No public endpoint is required.

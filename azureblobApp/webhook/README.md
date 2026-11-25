@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Azure Blob Storage webhook"
+description: Receive Azure Blob Storage connector events through webhook delivery in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-azure-blob-webhook-python
+---
+-->
+
 # Azure Blob Storage webhook trigger (Python)
 
 The Connector Namespace calls the deployed function's connector callback, authenticated with the `connector_extension` system key.

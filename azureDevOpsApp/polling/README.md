@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): Azure DevOps polling"
+description: Receive Azure DevOps connector events with polling in a Python Azure Functions app deployed using Azure Developer CLI (azd).
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-azure-devops-polling-python
+---
+-->
+
 # Azure DevOps polling triggers (Python)
 
 The Functions host pulls Azure DevOps events from the Connector Namespace polling endpoint. No public endpoint is required.

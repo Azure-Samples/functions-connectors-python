@@ -1,3 +1,19 @@
+<!--
+---
+name: "Azure Functions Connector Samples (Python): SharePoint Online webhook"
+description: Receive SharePoint Online connector events through webhook delivery in a Python Azure Functions app deployed using azd.
+page_type: sample
+languages:
+- python
+- bicep
+- azdeveloper
+products:
+- azure
+- azure-functions
+urlFragment: functions-connectors-sharepoint-webhook-python
+---
+-->
+
 # SharePoint Online webhook triggers (Python)
 
 The Connector Namespace sends SharePoint events to the deployed function app's connector callback. The five default events are always registered; the others are opt-in.
