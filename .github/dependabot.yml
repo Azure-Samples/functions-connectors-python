@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directories:
+      - "/.github"
+      - "/azureDevOpsApp/polling"
+      - "/azureDevOpsApp/webhook"
+      - "/azureblobApp/polling"
+      - "/azureblobApp/webhook"
+      - "/dataverseApp/polling"
+      - "/dataverseApp/webhook"
+      - "/genericApp/polling"
+      - "/genericApp/webhook"
+      - "/kustoApp"
+      - "/office365App/polling"
+      - "/office365App/webhook"
+      - "/onedriveApp/polling"
+      - "/onedriveApp/webhook"
+      - "/plannerApp/polling"
+      - "/plannerApp/webhook"
+      - "/salesforceApp/polling"
+      - "/salesforceApp/webhook"
+      - "/sharepointApp/polling"
+      - "/sharepointApp/webhook"
+      - "/teamsApp/polling"
+      - "/teamsApp/webhook"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
