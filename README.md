@@ -53,7 +53,7 @@ Install [Functions Core Tools](https://learn.microsoft.com/azure/azure-functions
 
 Follow the selected app's test steps to generate source events and confirm function invocations in the logs.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for offline validation and [CHANGELOG.md](CHANGELOG.md) for changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [CHANGELOG.md](CHANGELOG.md) for notable changes.
 
 ## Deprovision
 

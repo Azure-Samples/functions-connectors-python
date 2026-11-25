@@ -1,15 +1,20 @@
-## Change
+## Summary
 
-Affected sample folder(s), delivery mode, and reason:
+<!-- What changed and why. Link related issues, for example: Fixes #123. -->
+
+## Affected samples
+
+<!-- Sample paths and delivery modes (polling/webhook), or "repo-wide". -->
 
 ## Validation
 
-Offline checks performed and results:
-Manual event checks, if applicable (synthetic data only; otherwise say not run):
-Known baseline blockers:
+<!-- Commands run and results, for example `python -m py_compile`, `ruff check`, and `pip-audit`.
+Manual trigger testing: state local or Azure and the result, or "not run". Use test data only. -->
 
-- [ ] Updated affected setup/behavior documentation and Unreleased changelog.
-- [ ] Preserved authentication and avoided sensitive payload logging.
-- [ ] Included no credentials, private settings, generated environments, account
-      details, source URLs, payloads, or unredacted logs.
-- [ ] Kept the change scoped; no unrelated upgrades or formatting.
+## Checklist
+
+- [ ] Validation passed, or I explained above why it does not apply.
+- [ ] Each polling/webhook sample still restores, builds, and deploys independently.
+- [ ] Updated affected READMEs and the `Unreleased` section of CHANGELOG.md.
+- [ ] Kept existing Learn metadata (`urlFragment`) stable in sample READMEs.
+- [ ] Included no credentials, `local.settings.json`, `.azure` environments, build output, real payloads, or unredacted logs/screenshots.

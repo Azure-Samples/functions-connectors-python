@@ -1,76 +1,69 @@
-# Contributing
+# Contributing to Azure Functions connector samples for Python
 
-Keep changes focused on the affected connector and delivery mode. Each `polling`
-or `webhook` folder is a standalone Function App; `kustoApp` is a handler scaffold,
-and `genericApp` uses existing resources. Update the affected README when changing
-setup, trigger behavior, or configuration.
+This project welcomes contributions and suggestions. Most contributions require you to agree to a
+Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
+the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
 
-## Set up a sample
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide
+a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
+provided by the bot. You will only need to do this once across all repos using our CLA.
 
-Use Python 3.13 or newer. From the selected app folder, for example
-`onedriveApp/polling`, create and activate a virtual environment:
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-```sh
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements.txt
-```
+- [Code of Conduct](#coc)
+- [Issues and Bugs](#issue)
+- [Feature Requests](#feature)
+- [Submission Guidelines](#submit)
 
-On PowerShell, activate with `.venv\Scripts\Activate.ps1` instead. For older
-supported Python versions, follow the compatibility steps in the root README.
-See the selected app's README for Functions Core Tools, Azurite, Azure CLI,
-connector authorization, and local settings. Deployment with `azd up` creates
-billable Azure resources; it is not required for the offline checks below.
+## <a name="coc"></a> Code of Conduct
 
-## Offline validation
+Help us keep this project open and inclusive. Please read and follow our [Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 
-From the repository root in bash, use a separate virtual environment for the CI tools:
+## <a name="issue"></a> Found an Issue?
 
-```sh
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install --index-url https://pypi.org/simple -r .github/requirements-ci.txt
-git ls-files -z -- '*.py' | xargs -0 -r python -m py_compile
-python -m ruff check --select E9,F63,F7,F82 .
-git ls-files -- '*requirements.txt' ':!:.github/requirements-ci.txt' | while read -r f; do
-  python -m pip_audit --progress-spinner off --index-url https://pypi.org/simple -r "$f" || exit 1
-done
-git diff --check
-```
+If you find a bug in the source code or a mistake in the documentation, you can help us by
+[submitting an issue](#submit-issue) to the GitHub Repository. Even better, you can
+[submit a Pull Request](#submit-pr) with a fix.
 
-These compile tracked Python files, run focused Ruff correctness rules, and
-audit each sample's `requirements.txt` (including transitive dependencies) with
-`pip-audit`. Public package downloads and vulnerability lookups require internet access.
-Do not suppress baseline findings or upgrade unrelated sample dependencies just
-to make a check pass; report them separately.
+Do not report security vulnerabilities through public issues. Report them to the
+[Microsoft Security Response Center](https://msrc.microsoft.com/report/).
 
-CI also runs CodeQL's Python `security-and-quality` suite with `build-mode: none`,
-and dependency review of PR
-changes (blocking high/critical findings). Only CodeQL's job grants
-`security-events: write` to the automatically generated workflow token; checkout
-does not persist credentials. No repository or organization secrets, Azure
-credentials, deployment, or live connector calls are required.
+## <a name="feature"></a> Want a Feature?
 
-CodeQL is advanced setup. If default setup is already enabled, a repository admin
-must switch to advanced setup before this workflow can upload results.
-GitHub's built-in secret scanning is managed separately in repository settings;
-these workflows do not change those settings.
+You can *request* a new feature by [submitting an issue](#submit-issue) to the GitHub Repository.
+If you would like to *implement* a new feature, please submit an issue with a proposal for your
+work first, to be sure that we can use it.
 
-## Changes and reports
+- **Small features** can be crafted and directly [submitted as a Pull Request](#submit-pr).
 
-- Preserve authentication and avoid logging credentials or source payloads.
-- Never commit `local.settings.json`, `.env`, `.azure`, virtual environments,
-  generated packages, connection strings, callback keys, or real trigger inputs.
-- Do not put account identifiers, tenant/subscription details, source URLs,
-  payloads, or unredacted logs in issues or PRs. Use placeholders and synthetic data.
-- Describe the affected sample, expected/actual behavior, and checks performed.
-  Live event tests are manual and must follow that sample's README using test data;
-  offline CI does not prove end-to-end delivery.
-- Keep Learn metadata only on supported connector-specific standalone
-  polling/webhook READMEs, not overview guides, generic apps, or the Kusto scaffold.
-  Keep names/descriptions under 150 characters and unique `urlFragment` values
-  under 100 characters ending in `python`.
-- Record user-visible changes under **Unreleased** in `CHANGELOG.md`.
+## <a name="submit"></a> Submission Guidelines
 
-For sensitive security reports, use [Microsoft's security reporting process](https://www.microsoft.com/msrc)
-instead of a public issue.
+### <a name="submit-issue"></a> Submitting an Issue
+
+Before you submit an issue, search the archive, maybe your question was already answered.
+
+If your issue appears to be a bug, and hasn't been reported, open a new issue. Help us to maximize
+the effort we can spend fixing issues and adding new features by not reporting duplicate issues.
+Use the provided issue templates and do not include credentials, connection strings, or other
+sensitive data.
+
+You can file new issues by providing the above information at the corresponding repository's issues
+link: https://github.com/Azure-Samples/functions-connectors-python/issues/new/choose.
+
+### <a name="submit-pr"></a> Submitting a Pull Request (PR)
+
+Before you submit your Pull Request (PR) consider the following guidelines:
+
+- Search the repository (https://github.com/Azure-Samples/functions-connectors-python/pulls) for an open or closed PR
+  that relates to your submission. You don't want to duplicate effort.
+- Make your changes in a new git fork.
+- Commit your changes using a descriptive commit message.
+- Push your fork to GitHub.
+- In GitHub, create a pull request and complete the pull request template.
+- If we suggest changes then:
+  - Make the required updates.
+  - Rebase your fork and force push to your GitHub repository (this will update your Pull Request).
+
+That's it! Thank you for your contribution!

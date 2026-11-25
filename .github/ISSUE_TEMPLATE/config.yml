@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://msrc.microsoft.com/report/
+    about: Report security issues privately to the Microsoft Security Response Center, not as public issues.
+  - name: Azure Functions connectors documentation
+    url: https://learn.microsoft.com/azure/azure-functions/
+    about: Product questions and general Azure Functions guidance.
